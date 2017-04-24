@@ -65,7 +65,9 @@ def New_Node_Request(Node,Point,port):
 
        data["starting point"] = Point
        data["end point"] = range[1]
+       data["old starting point"] = range[0]
        data["left Node"] = currentNode
+
        rightNode,rightNodeRange = return_Node_For_Value(range[1]+1)
        data["right node"] = rightNode
        data = json.dumps(data)
@@ -76,7 +78,7 @@ def New_Node_Request(Node,Point,port):
 
 
 
-def Node_Failed_Notification(FailedNode, NotifyingNode, port)
+def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
     FailedNodeRange = NodeToRange[FailedNode]
     NotifyingNodeRange = NodeToRange[NotifyingNode]

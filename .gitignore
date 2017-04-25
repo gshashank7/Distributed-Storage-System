@@ -1,4 +1,7 @@
 *.pyc
 lib/
 *.xml
-.idea/
+workspace.xml
+.*
+!.gitignore
+

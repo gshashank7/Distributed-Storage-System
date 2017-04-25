@@ -1,10 +1,9 @@
 package DataServers.Dataservers.src;
 
+import jdk.nashorn.internal.parser.JSONParser;
 import org.json.*;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.*;
 import java.util.HashMap;
 
 class demo  {
@@ -16,18 +15,36 @@ class demo  {
     static DatagramSocket joinSocket;
     static DatagramSocket sendDataReqSocket;
     static DatagramSocket recDataSocket;
+    static DatagramSocket sendDataRepSocket;
+    static DatagramSocket recDataRepSocket;
+
     static int startRange;
     static int endRange;
+    static int oldNeighborStartRange;
     JSONObject joindata;
-    int regPort = 9000;
-    int dataReqPort = 10001;
-    int dataRecPort = 10005;
-    static String leftNeighbor, rightNeighbor;
+    static int regPort = 9000;
+    static int joinReqPort = 5006;
+    static int joinReqReplyPort = 9000;
+    static int sendDataCopyPort = 8500;
+    static int recDataCopyPort = 10005;
+    static int sendDataRepReq = 11000;
+    static int recDataRepReply = 10005;
+    static int sendHB = 13000;
+    static int receiveHB = 14000;
+    static int dataReqPort = 10001;
+    static int dataRecPort = 10005;
+    static String leftNeighbor, rightNeighbor, oldNeighborStart;
+
     public demo()   {
         systemMap = new HashMap<>();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SocketException{
+        sendSocket = new DatagramSocket(joinReqReplyPort);
+        joinSocket = new DatagramSocket(joinReqPort);
+        recSocket = new DatagramSocket(regPort);
+        recDataSocket = new DatagramSocket(recDataCopyPort);
+        recDataRepSocket = new DatagramSocket(recDataRepReply);
         System.out.println("Hello world");
 
     }
@@ -62,63 +79,19 @@ class demo  {
           }
       }
       // assumed that join request was successful
-         leftNeighbor = joindata.getString("left_neighbor");
-         rightNeighbor = joindata.getString("right_neighbor");
-        
-
+         leftNeighbor = joindata.getString("left Node");
+         rightNeighbor = joindata.getString("right node");
+         oldNeighborStart = joindata.getString("");
+        startRange = joindata.getInt("starting point");
+        endRange = joindata.getInt("end point");
+        oldNeighborStartRange = joindata.getInt("old starting point");
 
       return successfullyRegistered;
     }
 
-    /**
-     * This function copies the data from the left neighbor (takes in the data for its own range).
-     * @return
-     */
-    private boolean copyData()  {
-        boolean success = false;
-            while(!success) {
-                // send a packet for self data request
-                JSONObject obj = new JSONObject();
-                obj.append("Request_Type", "Copy");
-                obj.append("Start_Index", startRange);
-                obj.append("End_Index", endRange);
-                obj.append("port", "10005");
 
-                byte[] sendBuffer = obj.toString().getBytes();
-                DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(Integer.parseInt(leftNeighbor)) , regPort);
-                try {
-                    sendDataReqSocket.send(sendPacket);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
 
-                // start to receive the data
-                boolean done = false;
-                while(!done)    {
-                    byte[] receiveBuffer = new byte[8192];
-                    DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
-                    try {
-                        recDataSocket.receive(receivePacket);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
-                    if(recData.get("Data").equals("Done"))
-                        done = true;
-                    else {
-                        contents.put(recData.getInt("data key"), recData.getString("Data"));
-                    }
-
-                }
-
-                success = true;
-            }
-
-        return success;
-    }
-
-    private boolean replicateData() {
+    private boolean replicateData() throws UnknownHostException {
         boolean success = false;
         while (!success)    {
             JSONObject obj = new JSONObject();
@@ -128,7 +101,7 @@ class demo  {
             obj.append("port", "10005");
             byte[] sendBuffer = obj.toString().getBytes();
             byte[] receiveBuffer = new byte[2048];
-            DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(Integer.parseInt(leftNeighbor)) , regPort);
+            DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor) , regPort);
             DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
 
             boolean replicationReqAccepted = false;
@@ -162,7 +135,7 @@ class demo  {
                         obj.append("Key", key);
                         obj.append("Value", contents.get(key));
                         sendBuffer = obj.toString().getBytes();
-                        sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(Integer.parseInt(leftNeighbor)), regPort);
+                        sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(leftNeighbor), regPort);
                         // packet being sent
                         try {
                             sendDataReqSocket.send(sendPacket);
@@ -186,6 +159,106 @@ class demo  {
                     }
                 }
         }
+
+        return success;
+    }
+
+    /**
+     * This function copies the data from the left neighbor (takes in the data for its own range).
+     * @return
+     */
+    private boolean copyData() throws UnknownHostException {
+        boolean success = false;
+        while(!success) {
+            // send a packet for self data request
+            JSONObject obj = new JSONObject();
+            obj.append("Request_Type", "Copy");
+            obj.append("Start_Index", startRange);
+            obj.append("End_Index", endRange);
+            obj.append("port", "10005");
+
+            byte[] sendBuffer = obj.toString().getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(leftNeighbor) , regPort);
+            try {
+                sendDataReqSocket.send(sendPacket);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            // start to receive the data
+
+
+                byte[] receiveBuffer = new byte[8192];
+                DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+                try {
+                    recDataSocket.receive(receivePacket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
+
+                    //HashMap<Integer, String > data = new JSONParser().parse(recData.get("data"));
+                    contents.put(recData.getInt("key"), recData.getString("Data"));
+
+                    JSONObject sendObj = new JSONObject();
+                    sendObj.append("Request_Type", recData.getInt("key"));
+                     sendBuffer = sendObj.toString().getBytes();
+                    sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , recData.getInt("port"));
+                    //sending ack for received data
+                    try {
+                        recDataSocket.send(sendPacket);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+            success = true;
+        }
+
+        return success;
+    }
+
+
+    private boolean recCopyRequest()    {
+        boolean success = false;
+        byte[] receiveBuffer = new byte[2048];
+        DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+
+        try {
+            recSocket.receive(receivePacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
+        if(recData.get("Request_Type").equals("Copy"))  {
+            // copy request received
+            int startRange = recData.getInt("Start_Index");
+            int endRange = recData.getInt("End_Index");
+            int port = recData.getInt("port");
+            HashMap<Integer, String> toBeSent = new HashMap<>();
+            for(int key: contents.keySet()) {
+                if(key>= startRange && key<= endRange) {
+                    toBeSent.put(key, contents.get(key));
+
+                }
+
+                    // data to be sent
+                    JSONObject sendObj = new JSONObject(toBeSent);
+                    byte[] sendBuffer = sendObj.toString().getBytes();
+
+                    DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , port);
+
+                    try {
+                        sendSocket.send(sendPacket);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+
+        }
+
+
 
         return success;
     }

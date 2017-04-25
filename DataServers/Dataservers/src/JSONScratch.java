@@ -17,16 +17,26 @@ public class JSONScratch {
         HashMap<Integer, String> data = new HashMap<>();
         HashMap<Integer, String> data1 = new HashMap<>();
         data.put(1, "Shobhit");
-        data1.put(1, "Garg");
+        data.put(11, "asas");
+        data1.put(2, "Garg");
+        data1.put(22, "asdasdsadfa");
+//        JSONObject obj1 = new JSONObject(data);
+//        JSONObject obj2 = new JSONObject(data1);
         JSONObject obj = new JSONObject();
         obj.append("1", data);
         obj.append("2", data1);
-
-       // System.out.println(obj);
+//        JSONArray obj3 = (JSONArray) obj.get("1");
+//
+//        System.out.println(obj3.toString());
         Gson gson = new Gson();
-        String data2 = obj.getString("1");
+       // String data2 = obj.getString("1");
         //Type stringStringMap = new TypeToken<Map<Integer, String>>(){}.getType();
-        Map<Integer,String> retMap =(Map<Integer,String> ) gson.fromJson(obj.get("1").toString(), data.getClass());
+        JSONArray o = (JSONArray) obj.get("1");
+        String inString = o.get(0).toString();
+
+        Map<Integer,String> retMap =(Map<Integer,String> ) gson.fromJson(inString, data.getClass());
+
+
         Map<Integer,String> retMap1 =(Map<Integer,String> ) gson.fromJson(obj.get("2").toString(), data.getClass());
 
         System.out.println(retMap);

@@ -1,5 +1,6 @@
 package DataServers.Dataservers.src;
 
+import com.google.gson.Gson;
 import jdk.nashorn.internal.parser.JSONParser;
 import org.json.*;
 import java.io.IOException;
@@ -115,6 +116,7 @@ class demo  {
                 // receiving response for replication
                 try {
                     recDataSocket.receive(receivePacket);
+                    System.out.println("Replication request accepted");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -128,36 +130,77 @@ class demo  {
 
             boolean done = false;
             // sending data for replication
-                for(int key: contents.keySet()) {
-                    boolean singleInstanceSuccess = false;
-                    while (!singleInstanceSuccess) {
-                        obj = new JSONObject();
-                        obj.append("Key", key);
-                        obj.append("Value", contents.get(key));
-                        sendBuffer = obj.toString().getBytes();
-                        sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(leftNeighbor), regPort);
-                        // packet being sent
-                        try {
-                            sendDataReqSocket.send(sendPacket);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        // receive ack
-                        receiveBuffer = new byte[2048];
-                        receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
 
-                        // receive ack for single data instance
-                        try {
-                            recDataSocket.receive(receivePacket);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
-                        // if request accepted, break out of the loop
-                        if (recData.get("Data").equals("Successfully_Received"))
-                            singleInstanceSuccess = true;
-                    }
-                }
+            JSONObject sendObj = new JSONObject(contents);
+            sendBuffer = sendObj.toString().getBytes();
+
+            sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor) , regPort);
+            try {
+                sendDataReqSocket.send(sendPacket);
+                System.out.println("Replication data sent");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+//                for(int key: contents.keySet()) {
+//                    boolean singleInstanceSuccess = false;
+//                    while (!singleInstanceSuccess) {
+//                        obj = new JSONObject();
+//                        obj.append("Key", key);
+//                        obj.append("Value", contents.get(key));
+//                        sendBuffer = obj.toString().getBytes();
+//                        sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(leftNeighbor), regPort);
+//                        // packet being sent
+//                        try {
+//                            sendDataReqSocket.send(sendPacket);
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                        // receive ack
+//                        receiveBuffer = new byte[2048];
+//                        receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+//
+//                        // receive ack for single data instance
+//                        try {
+//                            recDataSocket.receive(receivePacket);
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                        JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
+//                        // if request accepted, break out of the loop
+//                        if (recData.get("Data").equals("Successfully_Received"))
+//                            singleInstanceSuccess = true;
+//                    }
+//                }
+        }
+
+        return success;
+    }
+
+    private boolean replicateDataReq()  {
+        boolean success = false;
+        byte[] receiveBuffer = new byte[2048];
+        DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+        try {
+            recSocket.receive(receivePacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
+        if(recData.getString("Request_Type").equals("Replicate"))   {
+            // replication request received
+
+            receiveBuffer = new byte[16384];
+            receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+            try {
+                recSocket.receive(receivePacket);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            recData = new JSONObject(receivePacket.getData().toString().trim());
+
+
         }
 
         return success;
@@ -195,22 +238,22 @@ class demo  {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
+                Gson gson = new Gson();
                 JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
+                // getting the actual contents
+                contents = (HashMap<Integer, String>) gson.fromJson(recData.get("1").toString(), contents.getClass());
+//                    JSONObject sendObj = new JSONObject();
+//                    sendObj.append("Request_Type", recData.getInt("key"));
+//                     sendBuffer = sendObj.toString().getBytes();
+//                    sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , recData.getInt("port"));
+//                    //sending ack for received data
+//                    try {
+//                        recDataSocket.send(sendPacket);
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
 
-                    //HashMap<Integer, String > data = new JSONParser().parse(recData.get("data"));
-                    contents.put(recData.getInt("key"), recData.getString("Data"));
-
-                    JSONObject sendObj = new JSONObject();
-                    sendObj.append("Request_Type", recData.getInt("key"));
-                     sendBuffer = sendObj.toString().getBytes();
-                    sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , recData.getInt("port"));
-                    //sending ack for received data
-                    try {
-                        recDataSocket.send(sendPacket);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+            HashMap<Integer, String> toBereplicated = (HashMap<Integer, String>) gson.fromJson(recData.get("1").toString(), contents.getClass());
 
             success = true;
         }
@@ -236,6 +279,8 @@ class demo  {
             int endRange = recData.getInt("End_Index");
             int port = recData.getInt("port");
             HashMap<Integer, String> toBeSent = new HashMap<>();
+
+           // getting the relevant data
             for(int key: contents.keySet()) {
                 if(key>= startRange && key<= endRange) {
                     toBeSent.put(key, contents.get(key));

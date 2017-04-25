@@ -141,38 +141,6 @@ class demo  {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-
-//                for(int key: contents.keySet()) {
-//                    boolean singleInstanceSuccess = false;
-//                    while (!singleInstanceSuccess) {
-//                        obj = new JSONObject();
-//                        obj.append("Key", key);
-//                        obj.append("Value", contents.get(key));
-//                        sendBuffer = obj.toString().getBytes();
-//                        sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(leftNeighbor), regPort);
-//                        // packet being sent
-//                        try {
-//                            sendDataReqSocket.send(sendPacket);
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                        // receive ack
-//                        receiveBuffer = new byte[2048];
-//                        receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
-//
-//                        // receive ack for single data instance
-//                        try {
-//                            recDataSocket.receive(receivePacket);
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                        JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
-//                        // if request accepted, break out of the loop
-//                        if (recData.get("Data").equals("Successfully_Received"))
-//                            singleInstanceSuccess = true;
-//                    }
-//                }
         }
 
         return success;

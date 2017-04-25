@@ -13,6 +13,3 @@ class article(models.Model):
     # def __str__(self):
     #     return self.article_title
 
-class articleList(models.Model):
-    article_title = models.CharField(max_length=500)
-

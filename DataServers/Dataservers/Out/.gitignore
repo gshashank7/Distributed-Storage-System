@@ -1,0 +1,7 @@
+*.pyc
+lib/
+*.xml
+workspace.xml
+.*
+!.gitignore
+

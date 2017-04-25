@@ -14,7 +14,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print BASE_DIR
+# print BASE_DIR
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
@@ -81,14 +81,6 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'wikiRIT',
-        'USER': 'root',
-        'PASSWORD': 'nikhilesh',
-        'HOST': 'localhost',   # Or an IP Address that your DB is hosted on
-        'PORT': '3306',
-    },
-    'articleList': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'routingDB',
         'USER': 'root',
         'PASSWORD': 'nikhilesh',
         'HOST': 'localhost',   # Or an IP Address that your DB is hosted on

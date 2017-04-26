@@ -24,6 +24,7 @@ public class DBINterface {
 
     JSONObject getData(String tableType){
         try {
+            System.out.println("Get data for " + tableType);
             Statement stmt = con.createStatement();
             String query = "";
 
@@ -44,6 +45,7 @@ public class DBINterface {
                 result.append("hash", rs.getString(7));
                 resultArray.put(result);
             }
+            System.out.println("sending " + resultArray.length() + " records");
             if(tableType.equalsIgnoreCase("original"))
                 return new JSONObject().put("originalData", resultArray);
             else
@@ -57,6 +59,7 @@ public class DBINterface {
 
     JSONObject getOriginalDataWithRange(int[] range){
         try{
+            System.out.println("Get original data with range [" + range[0] + " - "+ range[1] + "]");
             Statement stmt = con.createStatement();
             String query = "select * from " + dbs.primaryTable + " where hash where hash between "
                     + range[0] + " and " + range[1] + ";";
@@ -72,6 +75,7 @@ public class DBINterface {
                 result.append("hash", rs.getString(7));
                 resultArray.put(result);
             }
+            System.out.println("sending " + resultArray.length() + " records of original data ");
         return new JSONObject().put("originalData", resultArray);
     }
     catch (SQLException e){
@@ -81,7 +85,11 @@ public class DBINterface {
     }
 
     void writeData(String tableType, JSONObject obj){
-        JSONArray dataJSON = (JSONArray) obj.get("originalData");
+        JSONArray dataJSON = null;
+        if(tableType.equalsIgnoreCase("original"))
+            dataJSON = (JSONArray) obj.get("original");
+        else
+            dataJSON = (JSONArray) obj.get("replication");
         try {
             String insertArticle;
             if(tableType.equalsIgnoreCase("original")) {
@@ -101,9 +109,9 @@ public class DBINterface {
                 JSONObject row = (JSONObject) dataJSON.get(i);
                 psArticles.setString(1, row.get("article_title").toString());
                 psArticles.setString(2, row.get("article_content").toString());
-                psArticles.setString(5, row.get("author").toString());
-                psArticles.setString(6, row.get("image_name").toString());
-                psArticles.setString(7, row.get("hash").toString());
+                psArticles.setString(3, row.get("author").toString());
+                psArticles.setString(4, row.get("image_name").toString());
+                psArticles.setString(5, row.get("hash").toString());
                 psArticles.addBatch();
             }
             psArticles.executeBatch();
@@ -115,6 +123,7 @@ public class DBINterface {
 
     void deleteOriginalData(int[] range){
         try {
+            System.out.println("Delete records for ["  + range[0] + " - "+ range[1] + "]");
             Statement stmt = con.createStatement();
             String query = "delete from " + dbs.primaryTable + " where hash between "
                     + range[0] + " and " + range[1] + ";";
@@ -127,6 +136,7 @@ public class DBINterface {
 
     void deleteReplicationData(){
         try {
+            System.out.println("Delete records for replication");
             Statement stmt = con.createStatement();
             String query = "delete from " + dbs.replicationTable + ";";
             stmt.execute(query);
@@ -135,9 +145,11 @@ public class DBINterface {
             e.printStackTrace();
         }
     }
+
     public static void main(String[] args) {
         DBINterface dbin = new DBINterface();
         dbin.connect();
+        dbin.deleteOriginalData(new int[] {0,90});
         JSONObject obj = dbin.getData("original");
         System.out.println(obj);
     }

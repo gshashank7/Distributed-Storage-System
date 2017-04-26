@@ -18,8 +18,9 @@ ContentHits = {} # Maps Contents and how many tines it has been requested
 
 ################### FLAGS ##############
 
-AnyChange = False
+AnyChangeinNode = False
 
+AnyChangeinContent = False
 
 ################### FLAGS ##############
 
@@ -45,16 +46,23 @@ def return_Node_For_Value(value):
 
 def New_Node_Request(Node,Point,port):
 
-
+   print("Got a new node joining request")
    if len(RangeToNode) == 0:
-
+       print("Adding new Node")
+       print("This is the first node joining to the system")
        RangeToNode[(Point,(Point-1))] = Node
        NodeToRange[Node] = (Point,(Point-1))
 
+       print("Added Node")
+       print("The range of the first node is " + str(NodeToRange[Node]))
 
    else:
 
+
        currentNode, range = return_Node_For_Value(Point)
+
+       print("The current Node at using that address space is " + str(currentNode))
+       print("Addig new node")
 
        del RangeToNode[range]
        del NodeToRange[currentNode]
@@ -62,11 +70,18 @@ def New_Node_Request(Node,Point,port):
        data = {}
 
        RangeToNode[(range[0],(Point-1))] = currentNode
-
        RangeToNode[(Point,range[1])] = Node
 
        NodeToRange[currentNode] = (range[0],(Point-1))
        NodeToRange[Node] = (Point,range[1])
+
+       rightNode, rightNodeRange = return_Node_For_Value(range[1] + 1)
+
+
+       print("New range of Current Node : " + str(NodeToRange[currentNode]))
+       print("Range of New Node is  : " + str(NodeToRange[Node]))
+       print("Left Node of the new node is : " + str(currentNode))
+       print("Right Node of the new node is " + str(rightNode))
 
        data["flag"] = "JoinReply"
        data["starting point"] = Point
@@ -74,7 +89,8 @@ def New_Node_Request(Node,Point,port):
        data["old starting point"] = range[0]
        data["left Node"] = currentNode
 
-       rightNode,rightNodeRange = return_Node_For_Value(range[1]+1)
+       print("Sending this information to the new Node")
+
        data["right node"] = rightNode
        data = json.dumps(data)
        data= data.encode('utf-8')
@@ -85,6 +101,14 @@ def New_Node_Request(Node,Point,port):
 
 
 def Node_Failed_Notification(FailedNode, NotifyingNode, port):
+
+    print("Received information that the Node - "+ str(FailedNode) + " has failed")
+
+    print("Range of Failed node = " + str(NodeToRange[FailedNode]))
+
+    print("Range of Notifying node = " + str(NodeToRange[NotifyingNode]))
+
+    print("Performing operations to handle this situation ")
 
     FailedNodeRange = NodeToRange[FailedNode]
     NotifyingNodeRange = NodeToRange[NotifyingNode]
@@ -98,6 +122,10 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
     NewNeighbour,Range = return_Node_For_Value(FailedNodeRange[1])
 
+    print("New range of " + str(NotifyingNode) + " is " + str(NodeToRange[NotifyingNode]))
+
+    print("Sending this information to " + str(NotifyingNode))
+
     data = {}
     data['flag'] = "FailureReply"
     data["New Neighbour"] = NewNeighbour
@@ -109,6 +137,7 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     IP = NotifyingNode
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
+
 
 
 def request_For_Article(article):
@@ -149,7 +178,7 @@ def Send_Insertion_Request (article):
     ContentHits [article] = 0
 
 
-def receiveFromRoutingServer():
+def receive_From_Routing_Server():
     IP = socket.gethostname()
     port = 5005
 
@@ -173,7 +202,7 @@ def receiveFromRoutingServer():
             ContentHits = tempCheck["ContentHits"]
 
 
-def receiveFromDataServers():
+def receive_From_Data_Servers():
     IP = socket.gethostname()
     port = 5006
 
@@ -205,3 +234,13 @@ def receiveFromDataServers():
 
 
 
+def main():
+
+
+    receive_From_Data_Servers()
+
+
+
+
+if __name__ == '__main__':
+    main()

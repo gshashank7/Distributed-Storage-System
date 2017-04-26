@@ -46,15 +46,41 @@ def return_Node_For_Value(value):
 
 def New_Node_Request(Node,Point,port):
 
-   print("Got a new node joining request")
+   print("Got a new node joining request at point " + str(Point))
+
+
    if len(RangeToNode) == 0:
+
        print("Adding new Node")
        print("This is the first node joining to the system")
-       RangeToNode[(Point,(Point-1))] = Node
-       NodeToRange[Node] = (Point,(Point-1))
+
+       startingPoint = Point
+
+       endPoint = (Point -1)%360
+
+       RangeToNode[(startingPoint,endPoint)] = Node
+       NodeToRange[Node] = (startingPoint,endPoint)
 
        print("Added Node")
        print("The range of the first node is " + str(NodeToRange[Node]))
+
+       data = {}
+
+       data["flag"] = "JoinReply"
+       data["starting point"] = Point
+       data["end point"] = range[1]
+       data["old starting point"] = "empty"
+       data["left Node"] = 'empty'
+
+       print("Sending this information to the new Node")
+
+       data["right node"] = 'empty'
+       data = json.dumps(data)
+       data = data.encode('utf-8')
+       IP = Node
+       sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+       sendingSock.sendto(data, (IP, port))
+
 
    else:
 
@@ -62,14 +88,14 @@ def New_Node_Request(Node,Point,port):
        currentNode, range = return_Node_For_Value(Point)
 
        print("The current Node at using that address space is " + str(currentNode))
-       print("Addig new node")
+       print("Adding new node")
 
        del RangeToNode[range]
        del NodeToRange[currentNode]
 
        data = {}
 
-       RangeToNode[(range[0],(Point-1))] = currentNode
+       RangeToNode[(range[0],((Point-1)%360))] = currentNode
        RangeToNode[(Point,range[1])] = Node
 
        NodeToRange[currentNode] = (range[0],(Point-1))
@@ -112,6 +138,7 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
     FailedNodeRange = NodeToRange[FailedNode]
     NotifyingNodeRange = NodeToRange[NotifyingNode]
+
     del RangeToNode[FailedNode]
     del NodeToRange[FailedNodeRange]
     del RangeToNode[NotifyingNode]
@@ -203,6 +230,9 @@ def receive_From_Routing_Server():
 
 
 def receive_From_Data_Servers():
+
+    print("started receiving")
+
     IP = socket.gethostname()
     port = 5006
 

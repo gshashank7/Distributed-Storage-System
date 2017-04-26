@@ -3,5 +3,9 @@ lib/
 *.xml
 workspace.xml
 .*
+
 !.gitignore
 
+DataServers/Dataservers/Out/WebServers/wikiRIT/WIKI_RIT/static/images/golisano.jpg
+
+*.class

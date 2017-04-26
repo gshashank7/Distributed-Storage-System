@@ -22,10 +22,10 @@ public class DBINterface {
         }
     }
 
-    JSONObject getOriginalTableData(String articleTitle){
+    JSONObject getOriginalTableData(){
         try {
             Statement stmt = con.createStatement();
-            String query = "select * from " + dbs.primaryTable + " where article_title = '" + articleTitle + "'";
+            String query = "select * from " + dbs.primaryTable;
             ResultSet rs = stmt.executeQuery(query);
             JSONArray resultArray = new JSONArray();
 
@@ -46,6 +46,10 @@ public class DBINterface {
         return null;
     }
 
+    JSONObject getOriginalTableData(int[] range){
+        return new JSONObject();
+    }
+
     void writeOriginalData(JSONObject obj){
 
     }
@@ -53,6 +57,6 @@ public class DBINterface {
     public static void main(String[] args) {
         DBINterface dbin = new DBINterface();
         dbin.connect();
-        dbin.getOriginalTableData("B. Thomas Golisano College of Computing and Information Sciences");
+        dbin.getOriginalTableData();
     }
 }

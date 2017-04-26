@@ -114,11 +114,26 @@ public class DBINterface {
     }
 
     void deleteOriginalData(int[] range){
-
+        try {
+            Statement stmt = con.createStatement();
+            String query = "delete from " + dbs.primaryTable + " where hash between "
+                    + range[0] + " and " + range[1] + ";";
+            stmt.execute(query);
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
     }
 
     void deleteReplicationData(){
-
+        try {
+            Statement stmt = con.createStatement();
+            String query = "delete from " + dbs.replicationTable + ";";
+            stmt.execute(query);
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
     }
     public static void main(String[] args) {
         DBINterface dbin = new DBINterface();

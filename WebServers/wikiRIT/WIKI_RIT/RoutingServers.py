@@ -16,7 +16,12 @@ ContentHits = {} # Maps Contents and how many tines it has been requested
 
 ################### Dictionary Declarations ##############
 
+################### FLAGS ##############
 
+AnyChange = False
+
+
+################### FLAGS ##############
 
 
 def hash_Function(Name):
@@ -63,6 +68,7 @@ def New_Node_Request(Node,Point,port):
        NodeToRange[currentNode] = (range[0],(Point-1))
        NodeToRange[Node] = (Point,range[1])
 
+       data["flag"] = "JoinReply"
        data["starting point"] = Point
        data["end point"] = range[1]
        data["old starting point"] = range[0]
@@ -93,6 +99,7 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     NewNeighbour,Range = return_Node_For_Value(FailedNodeRange[1])
 
     data = {}
+    data['flag'] = "FailureReply"
     data["New Neighbour"] = NewNeighbour
     data["starting point"] = NotifyingNodeRange[0]
     data["end point"] = FailedNodeRange[1]
@@ -104,7 +111,39 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     sendingSock.sendto(data, (IP, port))
 
 
+def request_For_Article(article):
 
+    hashValue = hash_Function(article)
 
+    node = return_Node_For_Value(hashValue)
 
-# print(y)
+    ContentHits[article]+=1
+
+    data = {}
+
+    data ["flag"] = "ArticleRequest"
+    data["article"] = article
+
+    IP = node
+    port = 8006
+
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+def Send_Insertion_Request (article):
+
+    hashValue = hash_Function(article)
+
+    node = return_Node_For_Value(hashValue)
+
+    data = {}
+    data["flag"] = "ArticleInsert"
+    data["article"] = article
+
+    IP = node
+    port = 8006
+
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+    ContentHits [article] = 0

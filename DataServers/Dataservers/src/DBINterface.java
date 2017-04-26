@@ -113,8 +113,17 @@ public class DBINterface {
         }
     }
 
+    void deleteOriginalData(int[] range){
+
+    }
+
+    void deleteReplicationData(){
+
+    }
     public static void main(String[] args) {
         DBINterface dbin = new DBINterface();
         dbin.connect();
+        JSONObject obj = dbin.getData("original");
+        System.out.println(obj);
     }
 }

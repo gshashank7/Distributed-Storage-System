@@ -16,7 +16,12 @@ ContentHits = {} # Maps Contents and how many tines it has been requested
 
 ################### Dictionary Declarations ##############
 
+################### FLAGS ##############
 
+AnyChange = False
+
+
+################### FLAGS ##############
 
 
 def hash_Function(Name):
@@ -63,6 +68,7 @@ def New_Node_Request(Node,Point,port):
        NodeToRange[currentNode] = (range[0],(Point-1))
        NodeToRange[Node] = (Point,range[1])
 
+       data["flag"] = "JoinReply"
        data["starting point"] = Point
        data["end point"] = range[1]
        data["old starting point"] = range[0]
@@ -93,6 +99,7 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     NewNeighbour,Range = return_Node_For_Value(FailedNodeRange[1])
 
     data = {}
+    data['flag'] = "FailureReply"
     data["New Neighbour"] = NewNeighbour
     data["starting point"] = NotifyingNodeRange[0]
     data["end point"] = FailedNodeRange[1]
@@ -104,7 +111,97 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     sendingSock.sendto(data, (IP, port))
 
 
+def request_For_Article(article):
+
+    hashValue = hash_Function(article)
+
+    node = return_Node_For_Value(hashValue)
+
+    ContentHits[article]+=1
+
+    data = {}
+
+    data ["flag"] = "ArticleRequest"
+    data["article"] = article
+
+    IP = node
+    port = 8006
+
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+def Send_Insertion_Request (article):
+
+    hashValue = hash_Function(article)
+
+    node = return_Node_For_Value(hashValue)
+
+    data = {}
+    data["flag"] = "ArticleInsert"
+    data["article"] = article
+
+    IP = node
+    port = 8006
+
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+    ContentHits [article] = 0
+
+
+def receiveFromRoutingServer():
+    IP = socket.gethostname()
+    port = 5005
+
+    receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receivingSock.bind((IP, port))
+
+    while True:
+
+        data, addr = receivingSock.recvfrom(1024)
+
+        tempCheck = json.loads(data.decode('utf-8'))
+
+        if tempCheck['flag'] == "syncNode":
+
+           RangeToNode= tempCheck["RangeToNode"]
+
+           NodeToRange = tempCheck["NodeToRange"]
+
+        elif tempCheck['flag'] == "Content":
+
+            ContentHits = tempCheck["ContentHits"]
+
+
+def receiveFromDataServers():
+    IP = socket.gethostname()
+    port = 5006
+
+    receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receivingSock.bind((IP, port))
+
+    while True:
+        data, addr = receivingSock.recvfrom(1024)
+
+        tempCheck = json.loads(data.decode('utf-8'))
+
+        if tempCheck['flag'] == "Register":
+            point = tempCheck["point"]
+
+            port = tempCheck["port"]
+
+            New_Node_Request(addr[0],point,port)
+
+        elif tempCheck['flag'] == "FailureNotice":
+
+            FailedNode = tempCheck['FailedNode']
+
+            NotifyingNode = addr[0]
+
+            port = tempCheck[port]
+
+            Node_Failed_Notification(FailedNode,NotifyingNode,port)
 
 
 
-# print(y)
+

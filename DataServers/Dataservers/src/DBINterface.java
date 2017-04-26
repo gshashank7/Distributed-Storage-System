@@ -11,32 +11,34 @@ import org.json.*;
 public class DBINterface {
     Connection con = null;
     DBSettings dbs = new DBSettings();
+    String url = "jdbc:mysql://"+ dbs.DBaddress + ":" + dbs.port + "/" + dbs.DBName;
 
     void connect() {
         try {
             Class.forName("com.mysql.jdbc.Driver").newInstance();
-            String url = "jdbc:mysql:// "+ dbs.DBaddress + ":" + dbs.port + "/" + dbs.DBName;
             con = DriverManager.getConnection(url, dbs.username, dbs.password);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
     }
 
-    JSONObject getData(String articleTitle){
+    JSONObject getOriginalTableData(String articleTitle){
         try {
             Statement stmt = con.createStatement();
-            String query = "select * from " + dbs.primaryTable + " where article=" + articleTitle;
+            String query = "select * from " + dbs.primaryTable + " where article_title = '" + articleTitle + "'";
             ResultSet rs = stmt.executeQuery(query);
-            JSONObject result = new JSONObject();
+            JSONArray resultArray = new JSONArray();
 
             while(rs.next()){
+                JSONObject result = new JSONObject();
                 result.append("article_title", rs.getString(1));
                 result.append("article_content", rs.getString(2));
                 result.append("author", rs.getString(5));
                 result.append("image_name", rs.getString(6));
+                result.append("hash", rs.getString(7));
+                resultArray.put(result);
             }
-            System.out.println(result.get("article_title"));
-            return result;
+            return new JSONObject().put("originalData", resultArray);
         }
         catch (SQLException e){
             e.printStackTrace();
@@ -44,9 +46,13 @@ public class DBINterface {
         return null;
     }
 
+    void writeOriginalData(JSONObject obj){
+
+    }
+
     public static void main(String[] args) {
         DBINterface dbin = new DBINterface();
         dbin.connect();
-        dbin.getData("B. Thomas Golisano College of Computing and Information Sciences");
+        dbin.getOriginalTableData("B. Thomas Golisano College of Computing and Information Sciences");
     }
 }

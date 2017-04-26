@@ -7,7 +7,7 @@ package DataServers.Dataservers.src;
 public class DBSettings {
     String DBName = "wikiRIT";
     String DBaddress = "localhost";
-    int port = 3306;
+    String port = "3306";
     String primaryTable = "atricles";
     String replicationTable = "atricles_replication";
     String username = "root";

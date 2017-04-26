@@ -22,10 +22,16 @@ public class DBINterface {
         }
     }
 
-    JSONObject getOriginalTableData(){
+    JSONObject getData(String tableType){
         try {
             Statement stmt = con.createStatement();
-            String query = "select * from " + dbs.primaryTable;
+            String query = "";
+
+            if(tableType.equalsIgnoreCase("original"))
+                query = "select * from " + dbs.primaryTable;
+            else
+                query = "select * from " + dbs.replicationTable;
+
             ResultSet rs = stmt.executeQuery(query);
             JSONArray resultArray = new JSONArray();
 
@@ -38,7 +44,10 @@ public class DBINterface {
                 result.append("hash", rs.getString(7));
                 resultArray.put(result);
             }
-            return new JSONObject().put("originalData", resultArray);
+            if(tableType.equalsIgnoreCase("original"))
+                return new JSONObject().put("originalData", resultArray);
+            else
+                return new JSONObject().put("replicationData", resultArray);
         }
         catch (SQLException e){
             e.printStackTrace();
@@ -46,7 +55,7 @@ public class DBINterface {
         return null;
     }
 
-    JSONObject getOriginalTableData(int[] range){
+    JSONObject getOriginalDataWithRange(int[] range){
         try{
             Statement stmt = con.createStatement();
             String query = "select * from " + dbs.primaryTable + " where hash where hash between "
@@ -71,12 +80,20 @@ public class DBINterface {
         return null;
     }
 
-    void writeOriginalData(JSONObject obj){
+    void writeData(String tableType, JSONObject obj){
         JSONArray dataJSON = (JSONArray) obj.get("originalData");
         try {
-            String insertArticle = "INSERT INTO " + dbs.primaryTable +
-                    " (article_title, article_content, author, image_name, hash)"
-                    + " VALUES(?,?,?,?,?)";
+            String insertArticle;
+            if(tableType.equalsIgnoreCase("original")) {
+                insertArticle = "INSERT INTO " + dbs.primaryTable +
+                        " (article_title, article_content, author, image_name, hash)"
+                        + " VALUES(?,?,?,?,?)";
+            }
+            else{
+                insertArticle = "INSERT INTO " + dbs.replicationTable +
+                        " (article_title, article_content, author, image_name, hash)"
+                        + " VALUES(?,?,?,?,?)";
+            }
 
             PreparedStatement psArticles = con.prepareStatement(insertArticle);
 
@@ -99,6 +116,5 @@ public class DBINterface {
     public static void main(String[] args) {
         DBINterface dbin = new DBINterface();
         dbin.connect();
-        dbin.getOriginalTableData();
     }
 }

@@ -54,9 +54,9 @@ def New_Node_Request(Node,Point,port):
        print("Adding new Node")
        print("This is the first node joining to the system")
 
-       startingPoint = Point
+       startingPoint = 0
 
-       endPoint = (Point -1)%360
+       endPoint = (0 -1)%360
 
        RangeToNode[(startingPoint,endPoint)] = Node
        NodeToRange[Node] = (startingPoint,endPoint)
@@ -68,13 +68,13 @@ def New_Node_Request(Node,Point,port):
 
        data["flag"] = "JoinReply"
        data["starting point"] = Point
-       data["end point"] = range[1]
-       data["old starting point"] = "empty"
-       data["left Node"] = 'empty'
+       data["end point"] = endPoint
+       data["old starting point"] = -1
+       data["left node"] = "empty"
+       data["right node"] = "empty"
 
        print("Sending this information to the new Node")
 
-       data["right node"] = 'empty'
        data = json.dumps(data)
        data = data.encode('utf-8')
        IP = Node
@@ -101,7 +101,7 @@ def New_Node_Request(Node,Point,port):
        NodeToRange[currentNode] = (range[0],(Point-1))
        NodeToRange[Node] = (Point,range[1])
 
-       rightNode, rightNodeRange = return_Node_For_Value(range[1] + 1)
+       rightNode, rightNodeRange = return_Node_For_Value((range[1] + 1)%360)
 
 
        print("New range of Current Node : " + str(NodeToRange[currentNode]))
@@ -113,7 +113,7 @@ def New_Node_Request(Node,Point,port):
        data["starting point"] = Point
        data["end point"] = range[1]
        data["old starting point"] = range[0]
-       data["left Node"] = currentNode
+       data["left node"] = currentNode
 
        print("Sending this information to the new Node")
 
@@ -180,6 +180,9 @@ def request_For_Article(article):
     data ["flag"] = "ArticleRequest"
     data["article"] = article
 
+    data = json.dumps(data)
+    data = data.encode("utf-8")
+
     IP = node
     port = 8006
 
@@ -195,6 +198,9 @@ def Send_Insertion_Request (article):
     data = {}
     data["flag"] = "ArticleInsert"
     data["article"] = article
+
+    data = json.dumps(data)
+    data = data.encode("utf-8")
 
     IP = node
     port = 8006
@@ -233,21 +239,27 @@ def receive_From_Data_Servers():
 
     print("started receiving")
 
-    IP = socket.gethostname()
+    IP = "129.21.159.104"
     port = 5006
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receivingSock.bind((IP, port))
 
+
+
     while True:
         data, addr = receivingSock.recvfrom(1024)
 
+        print("Some data received of type " + str(type(data)))
+
         tempCheck = json.loads(data.decode('utf-8'))
 
-        if tempCheck['flag'] == "Register":
-            point = tempCheck["point"]
+        print(tempCheck)
 
-            port = tempCheck["port"]
+        if tempCheck['flag'][0] == "Register":
+            point = tempCheck["point"][0]
+
+            port = int(tempCheck["port"][0])
 
             New_Node_Request(addr[0],point,port)
 

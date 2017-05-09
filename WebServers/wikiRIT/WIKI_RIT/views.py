@@ -16,11 +16,12 @@ def login(request):
         password = request.POST.get('password');
         print(username)
         print(password)
-        user = authenticate(username=username, password=password)
+        user = authenticate(username=username)
         if user is not None:
             auth_login(request, user)
             return redirect('article_list')
         else:
+            print "user not authenticated"
             return render(request, 'login.html', {"message": "cannot login"}, context_instance=RequestContext(request))
     else:
         return render(request, 'login.html', {}, context_instance=RequestContext(request))
@@ -38,9 +39,15 @@ def saveUser(request):
 
 def createArticle(request):
     if request.method == "POST":
-        print(request.user)
-        print(request.POST.get('article_title'))
-        print(request.POST.get('article_content'))
-        return redirect('article_list')
+        user = authenticate(username=request.user)
+        if user is not None:
+            article_title = request.POST.get('article_title')
+            article_content = request.POST.get('article_content')
+            article = { "type": "create", "article_title" : article_title, "article_content": article_content}
+            print article
+            return redirect('article_list')
+        else:
+            print("Not authorized")
+            return render(request, 'create_article.html', {"message": "unauthorized access"}, context_instance=RequestContext(request))
     else:
         return render(request, 'create_article.html', {}, context_instance=RequestContext(request))

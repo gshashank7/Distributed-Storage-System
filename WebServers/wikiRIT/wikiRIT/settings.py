@@ -87,7 +87,10 @@ DATABASES = {
         'PORT': '3306',
     }
 }
-
+AUTHENTICATION_BACKENDS = (
+    # ... your other backends
+    'WIKI_RIT.auth_backend.PasswordlessAuthBackend',
+)
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/

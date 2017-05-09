@@ -6,16 +6,7 @@ import socket
 import json
 import _thread
 import random
-
-
-class node:
-
-    def __init__(self,IP,startPoint,endPoint):
-
-        self.IP = IP
-        self.startPoint = startPoint
-        self.endPoint = endPoint
-
+from fractions import gcd
 
 
 ################### Dictionary Declarations ##############
@@ -36,6 +27,55 @@ AnyChangeinContent = False
 
 ################### FLAGS ##############
 
+
+
+#################################Digital Signature Class####################################
+
+class DigitalSignature():
+
+
+    def __init__(self,p,q):
+
+        self.p = p
+        self.q = q
+
+        self.n = self.p* self.q
+        self.phiOfn = (self.p-1) * (self.q-1)
+        self.efound = False
+
+        while self.efound != True:
+
+            self.e = random.randint(0, self.phiOfn)
+
+            if gcd(self.e, self.phiOfn) == 1:
+                self.efound = True
+
+
+        self.d = 0
+
+        while (self.e*self.d) % self.phiOfn != 1:
+
+            self.d+=1
+
+
+    def encrypt(self,m):
+
+        y = (m**self.d) % self.n
+
+        return y
+
+    def authenticate(self,m,y,e,n):
+
+        z = (y**e) % n
+
+        if z == m:
+
+            return True
+        else:
+
+            return False
+
+#################################Digital Signature Class####################################
 
 def hash_Function(Name):
 
@@ -181,6 +221,7 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
 def request_For_Article(article):
 
+
     hashValue = hash_Function(article)
 
     node1 = return_Node_For_Value(hashValue)
@@ -211,6 +252,8 @@ def request_For_Article(article):
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
 
+
+
 def Send_Insertion_Request (article, content):
 
     hashValue = hash_Function(article)
@@ -240,53 +283,96 @@ def Send_Insertion_Request (article, content):
     ContentHits [article] = 0
 
 
-def receive_From_Routing_Server():
 
-    IP = socket.gethostname()
-    port = 5005
 
-    receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    receivingSock.bind((IP, port))
 
-    while True:
 
-        data, addr = receivingSock.recvfrom(1024)
+# def receive_From_Routing_Server():
+#
+#     IP = socket.gethostname()
+#     port = 5005
+#
+#     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     receivingSock.bind((IP, port))
+#
+#     while True:
+#
+#         data, addr = receivingSock.recvfrom(1024)
+#
+#         tempCheck = json.loads(data.decode('utf-8'))
+#
+#         if tempCheck['flag'] == "syncNode":
+#
+#            RangeToNode= tempCheck["RangeToNode"]
+#
+#            NodeToRange = tempCheck["NodeToRange"]
+#
+#         elif tempCheck['flag'] == "Content":
+#
+#             ContentHits = tempCheck["ContentHits"]
 
-        tempCheck = json.loads(data.decode('utf-8'))
 
-        if tempCheck['flag'] == "syncNode":
 
-           RangeToNode= tempCheck["RangeToNode"]
 
-           NodeToRange = tempCheck["NodeToRange"]
 
-        elif tempCheck['flag'] == "Content":
+def send_List_To_Web_Server():
 
-            ContentHits = tempCheck["ContentHits"]
+
+    IP = "129.21.69.21"
+    port = 7007
+
+    data = ContentHits
+    data = json.dumps(data)
+    data = data.encode("utf-8")
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+    print("Sent the list")
+
 
 
 def receive_From_Web_Server():
 
-    IP = socket.gethostname()
-    port = 5005
+    IP = "129.21.156.120"
+    port = 5007
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receivingSock.bind((IP, port))
+
+    print("Started Receiving from web server")
 
     while True:
 
         data, addr = receivingSock.recvfrom(1024)
 
+        print("Received something")
         tempCheck = json.loads(data.decode('utf-8'))
+
+        print(tempCheck)
 
         if tempCheck['flag'] == "Insert":
 
-            data = tempCheck['Data']
+            print("Received Insertion request")
+
+            content = tempCheck["Content"]
+            article = tempCheck["Article"]
+            ContentHits[article] = 0
 
 
         elif tempCheck['flag'] == "Read":
 
             article = tempCheck["Article"]
+
+        # elif tempCheck['flag'] == "Update":
+
+        elif tempCheck['flag'] == "List":
+
+            print("Received List Request")
+            send_List_To_Web_Server()
+
+
+
+
 
 
 def receive_From_Data_Servers():
@@ -333,8 +419,9 @@ def receive_From_Data_Servers():
 def main():
 
 
-    receive_From_Data_Servers()
+    # receive_From_Data_Servers()
 
+    receive_From_Web_Server()
 
 
 

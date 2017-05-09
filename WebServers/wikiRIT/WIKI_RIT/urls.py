@@ -2,7 +2,10 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    url(r'^article/$', views.article_list, name='article_list'),
-    url(r'^homepage/$', views.homepage, name='homepage'),
-    url(r'^/$', views.listArticles, name='listArticles')
+    url(r'^articles/$', views.article_list, name='article_list'),
+    url(r'^create_article/$', views.createArticle, name='create_article'),
+    url(r'^login/$', views.login, name='login'),
+    url(r'^create_user/$', views.createUser, name='create_user'),
+    url(r'^save_user/$', views.saveUser, name='save_user'),
+
 ]

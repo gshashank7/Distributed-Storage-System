@@ -200,7 +200,7 @@ def request_For_Article(article):
     data = {}
 
     data ["flag"] = "ArticleRequest"
-    data["article"] = article
+    data["Article"] = article
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -211,15 +211,22 @@ def request_For_Article(article):
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
 
-def Send_Insertion_Request (article):
+def Send_Insertion_Request (article, content):
 
     hashValue = hash_Function(article)
+
+    content = json.loads(content.decode("utf-8"))
+
+    content['hash'] = hashValue
+
+    content = json.dumps(content)
 
     node = return_Node_For_Value(hashValue)
 
     data = {}
     data["flag"] = "ArticleInsert"
-    data["article"] = article
+    data["Article"] = article
+    data['Content'] = content
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -234,6 +241,7 @@ def Send_Insertion_Request (article):
 
 
 def receive_From_Routing_Server():
+
     IP = socket.gethostname()
     port = 5005
 
@@ -255,11 +263,6 @@ def receive_From_Routing_Server():
         elif tempCheck['flag'] == "Content":
 
             ContentHits = tempCheck["ContentHits"]
-
-
-# def request_Article_From_Data_node(article):
-
-
 
 
 def receive_From_Web_Server():

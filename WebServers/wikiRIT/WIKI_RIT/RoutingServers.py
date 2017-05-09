@@ -4,6 +4,18 @@ __Author__ : Shashank Gangadhara
 
 import socket
 import json
+import _thread
+import random
+
+
+class node:
+
+    def __init__(self,IP,startPoint,endPoint):
+
+        self.IP = IP
+        self.startPoint = startPoint
+        self.endPoint = endPoint
+
 
 
 ################### Dictionary Declarations ##############
@@ -67,11 +79,11 @@ def New_Node_Request(Node,Point,port):
        data = {}
 
        data["flag"] = "JoinReply"
-       data["starting point"] = Point
-       data["end point"] = endPoint
-       data["old starting point"] = -1
-       data["left node"] = "empty"
-       data["right node"] = "empty"
+       data["Starting Point"] = Point
+       data["End Point"] = endPoint
+       data["Old Starting Point"] = -1
+       data["Left Node"] = "empty"
+       data["Right Node"] = "empty"
 
        print("Sending this information to the new Node")
 
@@ -110,14 +122,14 @@ def New_Node_Request(Node,Point,port):
        print("Right Node of the new node is " + str(rightNode))
 
        data["flag"] = "JoinReply"
-       data["starting point"] = Point
-       data["end point"] = range[1]
-       data["old starting point"] = range[0]
-       data["left node"] = currentNode
+       data["Starting Point"] = Point
+       data["End Point"] = range[1]
+       data["Old Starting Point"] = range[0]
+       data["Left Node"] = currentNode
+       data["Right Node"] = rightNode
 
        print("Sending this information to the new Node")
 
-       data["right node"] = rightNode
        data = json.dumps(data)
        data= data.encode('utf-8')
        IP = Node
@@ -154,10 +166,10 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     print("Sending this information to " + str(NotifyingNode))
 
     data = {}
-    data['flag'] = "FailureReply"
+    data['flag'] = "Failure Reply"
     data["New Neighbour"] = NewNeighbour
-    data["starting point"] = NotifyingNodeRange[0]
-    data["end point"] = FailedNodeRange[1]
+    data["Starting Point"] = NotifyingNodeRange[0]
+    data["End Point"] = FailedNodeRange[1]
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -171,7 +183,17 @@ def request_For_Article(article):
 
     hashValue = hash_Function(article)
 
-    node = return_Node_For_Value(hashValue)
+    node1 = return_Node_For_Value(hashValue)
+
+    endPointofThisNode = NodeToRange[node1]
+
+    endPointofThisNode = endPointofThisNode[1]
+
+    node2 = return_Node_For_Value(endPointofThisNode)
+
+    nodes = [node1,node2]
+
+    node = random.choice(nodes)
 
     ContentHits[article]+=1
 
@@ -263,9 +285,9 @@ def receive_From_Data_Servers():
 
             New_Node_Request(addr[0],point,port)
 
-        elif tempCheck['flag'] == "FailureNotice":
+        elif tempCheck['flag'] == "Failure Notice":
 
-            FailedNode = tempCheck['FailedNode']
+            FailedNode = tempCheck['Failed Node']
 
             NotifyingNode = addr[0]
 

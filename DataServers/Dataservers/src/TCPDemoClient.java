@@ -1,8 +1,12 @@
 package DataServers.Dataservers.src;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Socket;
 import java.util.HashMap;
 
@@ -12,14 +16,14 @@ import java.util.HashMap;
 public class TCPDemoClient {
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
-        Socket client = new Socket("129.21.22.196", 9000);
+        DatagramSocket socket = new DatagramSocket(8006);
+        byte[] buffer = new byte[2048];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        socket.receive(packet);
+        String data = new String(packet.getData(), "UTF-8");
+        JSONObject obj = new JSONObject(data);
+        System.out.println(data);
 
-        InputStream inputStream = client.getInputStream();
-        ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
-        HashMap<Integer, String> data = (HashMap<Integer, String>) objectInputStream.readObject();
-
-        for(int key: data.keySet()) {
-            System.out.println("Key: " + key + "  Value: " + data.get(key));
         }
     }
-}
+

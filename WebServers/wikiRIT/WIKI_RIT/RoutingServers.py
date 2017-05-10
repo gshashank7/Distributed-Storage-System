@@ -83,7 +83,9 @@ RangeToNode = {} # Maps Ranges to Nodes
 
 NodeToRange = {} # Maps Nodes to Ranges
 
-ContentHits = {} # Maps Contents and how many tines it has been requested
+ContentHits = {} # Maps Contents and how many times it has been requested
+
+NodeToPK = {}
 
 ################### Dictionary Declarations ##############
 
@@ -375,6 +377,28 @@ def Send_Insertion_Request (article,update, content):
 
 
 
+def send_My_Public_Key(IP,port):
+
+    data = {}
+
+    data['flag'] = "PK"
+
+    data['e'] = DS.e
+
+    data['n'] = DS.n
+
+    data = json.dumps(data)
+
+    data = data.encode("utf-8")
+
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    sendingSock.sendto(data, (IP, port))
+
+    print("Sent My Public Keys")
+
+
+
 def send_List_To_Web_Server():
 
 
@@ -393,7 +417,7 @@ def send_List_To_Web_Server():
 
 def receive_From_Web_Server():
 
-    IP = "129.21.156.120"
+    IP = socket.gethostbyname(socket.gethostname())
     port = 5007
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -410,7 +434,14 @@ def receive_From_Web_Server():
 
         print(tempCheck)
 
-        if tempCheck['flag'] == "Insert":
+
+
+        if tempCheck['flag'] == "PK":
+
+                send_My_Public_Key(IP,7007)
+
+
+        elif tempCheck['flag'] == "Insert":
 
             print("Received Insertion request")
 
@@ -442,11 +473,13 @@ def receive_From_Web_Server():
 
 
 
+
+
 def receive_From_Data_Servers():
 
     print("started receiving")
 
-    IP = "129.21.159.137"
+    IP = socket.gethostbyname(socket.gethostname())
     port = 5006
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -468,13 +501,15 @@ def receive_From_Data_Servers():
 
             port = int(tempCheck["port"][0])
 
-            New_Node_Request(addr[0],point,port)
+            IP = tempCheck["IP"][0]
+
+            New_Node_Request(IP,point,port)
 
         elif tempCheck['flag'] == "Failure Notice":
 
             FailedNode = tempCheck['Failed Node'][0]
 
-            NotifyingNode = addr[0]
+            NotifyingNode = tempCheck["IP"][0]
 
             port = tempCheck[port][0]
 

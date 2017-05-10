@@ -61,17 +61,35 @@ class DigitalSignature():
 
     def authenticate(self,m,y,e,n):
 
+        print("PUBLIC KEYS OF WEB SERVER ARE : " + str(e) + " AND " + str(n))
+
+        print("SIGNATURE SENT WITH THE MESSAGE : " + str(y))
+
+
+
         m = self.hash_Function(m)
+
+        print("HASH OF MESSAGE : " + str(m))
+
+        print("DECRYPTING THE SIGNATURE USING PUBLIC KEYS")
+
+
 
         z = (y**e) % n
 
-        print(str(z))
-        print(str(m))
+        print("DECRYPTED VALUE : " + str(z))
+
 
         if z == m:
 
+            print("THE HASH MATCHES WITH THE DECRYPTED VALUE")
+
             return True
+
+
         else:
+
+            print("THE HASH DOESN'T MATCH WITH THE DECRYPTED VALUE")
 
             return False
 
@@ -127,7 +145,7 @@ ListOfPrimeNumbers = [2,3,5,7,11,13,17,19,23,29,31
 p = random.choice(ListOfPrimeNumbers)
 
 q = p
-while q!=p:
+while q==p:
     q = random.choice(ListOfPrimeNumbers)
 
 
@@ -160,13 +178,14 @@ def return_Node_For_Value(value):
 
 def New_Node_Request(Node,Point,port):
 
-   print("Got a new node joining request at point " + str(Point))
-
+   print("ADDING NEW NODE")
+   print("NODE IS : " + str(Node))
 
    if len(RangeToNode) == 0:
 
-       print("Adding new Node")
-       print("This is the first node joining to the system")
+
+
+       print("THIS IS THE FIRST NODE JOINING THE SYSTEM")
 
        startingPoint = 0
 
@@ -175,8 +194,7 @@ def New_Node_Request(Node,Point,port):
        RangeToNode[(startingPoint,endPoint)] = Node
        NodeToRange[Node] = (startingPoint,endPoint)
 
-       print("Added Node")
-       print("The range of the first node is " + str(NodeToRange[Node]))
+       print("ADDED NODE AND THE RANGE IS : " +str(NodeToRange[Node]))
 
        data = {}
 
@@ -187,7 +205,7 @@ def New_Node_Request(Node,Point,port):
        data["Left Node"] = "empty"
        data["Right Node"] = "empty"
 
-       print("Sending this information to the new Node")
+       print("SENDING THIS INFORMATION TO THE NODE ")
 
        data = json.dumps(data)
        data = data.encode('utf-8')
@@ -201,8 +219,9 @@ def New_Node_Request(Node,Point,port):
 
        currentNode, range = return_Node_For_Value(Point)
 
-       print("The current Node at using that address space is " + str(currentNode))
-       print("Adding new node")
+
+       print("CURRENT NODE HAVING THE ADDRESS SPACE IS " + str(currentNode))
+
 
        del RangeToNode[range]
        del NodeToRange[currentNode]
@@ -218,10 +237,10 @@ def New_Node_Request(Node,Point,port):
        rightNode, rightNodeRange = return_Node_For_Value((range[1] + 1)%360)
 
 
-       print("New range of Current Node : " + str(NodeToRange[currentNode]))
-       print("Range of New Node is  : " + str(NodeToRange[Node]))
-       print("Left Node of the new node is : " + str(currentNode))
-       print("Right Node of the new node is " + str(rightNode))
+       print("NEW CURRENT NODE RANGE : " + str(NodeToRange[currentNode]))
+       print("NEW NODE RANGE : " + str(NodeToRange[Node]))
+       print("LEFT NEIGHBOUR : " + str(currentNode))
+       print("RIGHT NEIGHBOUR : " + str(rightNode))
 
        data["flag"] = "JoinReply"
        data["Starting Point"] = Point
@@ -230,7 +249,7 @@ def New_Node_Request(Node,Point,port):
        data["Left Node"] = currentNode
        data["Right Node"] = rightNode
 
-       print("Sending this information to the new Node")
+       print("SENDING THIS INFORMATION TO THE NODE ")
 
        data = json.dumps(data)
        data= data.encode('utf-8')
@@ -242,13 +261,13 @@ def New_Node_Request(Node,Point,port):
 
 def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
-    print("Received information that the Node - "+ str(FailedNode) + " has failed")
+    print("FAILED NODE : "+ str(FailedNode))
 
-    print("Range of Failed node = " + str(NodeToRange[FailedNode]))
+    print("FAILED NODE RANGE : " + str(NodeToRange[FailedNode]))
 
-    print("Range of Notifying node = " + str(NodeToRange[NotifyingNode]))
+    print("NOTIFYING NODE RANGE" + str(NodeToRange[NotifyingNode]))
 
-    print("Performing operations to handle this situation ")
+    print("HANDLING THE SITUATION")
 
     FailedNodeRange = NodeToRange[FailedNode]
     NotifyingNodeRange = NodeToRange[NotifyingNode]
@@ -263,9 +282,9 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
     NewNeighbour,Range = return_Node_For_Value(FailedNodeRange[1])
 
-    print("New range of " + str(NotifyingNode) + " is " + str(NodeToRange[NotifyingNode]))
+    print("NEW RANGE OF " + str(NotifyingNode) + " : " + str(NodeToRange[NotifyingNode]))
 
-    print("Sending this information to " + str(NotifyingNode))
+    print("SENDING THIS INFORMATION TO : " + str(NotifyingNode))
 
     data = {}
     data['flag'] = "Failure Reply"
@@ -314,6 +333,9 @@ def request_For_Article(article):
     data = data.encode("utf-8")
 
     IP = node[0]
+
+    # print("Sending Request for Article - " + str(article) + " to node " + str(IP))
+
     port = 9000
 
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -328,7 +350,7 @@ def Send_Insertion_Request (article,update, content):
     hashValue = hash_Function(article)
 
     node = return_Node_For_Value(hashValue)
-    print("Sending request to node - " +str(node))
+    # print("Sending request to node - " +str(node))
     data = {}
 
     if update == True:
@@ -357,7 +379,7 @@ def Send_Insertion_Request (article,update, content):
     sendingSock.sendto(data, (IP, port))
 
 
-    print("Request for Article " + article + "sent to data servers")
+    # print("Request for Article " + article + "sent to data servers")
 
 
 
@@ -393,6 +415,8 @@ def Send_Insertion_Request (article,update, content):
 
 def send_My_Public_Key(IP,port):
 
+    print("SENDING MY PUBLIC KEYS TO WEB SERVER")
+
     data = {}
 
     data['flag'] = "PK"
@@ -409,7 +433,7 @@ def send_My_Public_Key(IP,port):
 
     sendingSock.sendto(data, (IP, port))
 
-    print("Sent My Public Keys")
+    print("SENT MY PUBLIC KEYS")
 
 
 
@@ -425,11 +449,10 @@ def send_List_To_Web_Server():
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
 
-    print("Sent the list")
-
-
 def send_Article_Response_To_Web_Server(article,content):
 
+
+    print("FORWARDING THIS INFORMATION TO WEB SERVER")
     data = {}
     IP = "129.21.69.21"
     port = 7007
@@ -441,21 +464,20 @@ def send_Article_Response_To_Web_Server(article,content):
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
 
-    print("Sent the list")
+    print("INFORMATION SENT")
 
 
 def send_Conformation_To_Web_Server(IP,port):
 
     data = {}
-    IP = "129.21.69.21"
-    port = 7007
+
     data['flag'] = "Inserted"
     data = json.dumps(data)
     data = data.encode("utf-8")
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
 
-    print("Sent the list")
+
 
 
 def receive_From_Web_Server():
@@ -463,29 +485,25 @@ def receive_From_Web_Server():
     global webServerE
     global webServerN
 
-    IP = "129.21.156.120"
+    IP = "192.168.0.28"
     port = 5007
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receivingSock.bind((IP, port))
 
-    print("Started Receiving from web server")
+    print("LISTENING TO WEB SERVER")
 
     while True:
 
         data, addr = receivingSock.recvfrom(1024)
 
-        print("Received something")
         tempCheck = json.loads(data.decode('utf-8'))
-
-        print(tempCheck)
-
 
 
         if tempCheck['flag'] == "PK":
 
-
-            print("Received Public key form Web Server")
+            print("")
+            print("RECEIVED PUBLIC KEY FROM WEB SERVER")
 
             webServerE = tempCheck['e']
             webServerN = tempCheck['n']
@@ -494,67 +512,121 @@ def receive_From_Web_Server():
 
         elif tempCheck['flag'] == "Insert":
 
-            print("Received Insertion request")
+
 
             content = tempCheck["Content"]
             article = tempCheck["Article"]
 
-            y = int(tempCheck["y"])
+            y = tempCheck["y"]
 
-            # if DS.authenticate(article,y,webServerE,webServerN) == True:
+            print("")
+            print("NEW ARTICLE INSERT REQUEST RECEIVED")
 
-            print("AUTHENTICATED SUCCESSFULLY")
+            print("")
 
-            ContentHits[article] = 0
+            print("-----------------------------------------------")
+            print("AUTHENTICATING USING RSA SIGNATURE")
 
-            print("Retrieving content from Data Servers")
+            if DS.authenticate(article,y,webServerE,webServerN) == True:
 
-            Send_Insertion_Request(article,False,content)
+                print("AUTHENTICATED SUCCESSFULLY")
+                print("-----------------------------------------------")
+                print("")
 
-            send_Conformation_To_Web_Server(addr[0],7007)
+                ContentHits[article] = 0
 
+                print("INSERTING CONTENT AT THE APPROPRIATE DATA NODE")
 
-            # else:
-            #
-            #     print("Authentication Failed")
+                Send_Insertion_Request(article,False,content)
+
+                send_Conformation_To_Web_Server(addr[0],7007)
+                print("CONFORMATION SENT TO WEB SERVER")
+
+            else:
+
+                print("AUTHENTICATION FAILED")
+                print("-----------------------------------------------")
 
         elif tempCheck['flag'] == "Read":
 
             article = tempCheck["Article"]
 
-            # if DS.authenticate(article, y, webServerE, webServerN) == True:
+            y = tempCheck["y"]
 
-            request_For_Article(article)
+            print("")
+            print("READ REQUEST RECEIVED")
 
-            # else:
-            #
-            #     print("Authentication Failed")
+            print("")
+
+            print("-----------------------------------------------")
+            print("AUTHENTICATING USING RSA SIGNATURE")
+
+            if DS.authenticate(article, y, webServerE, webServerN) == True:
+
+
+                print("AUTHENTICATED SUCCESSFULLY")
+                print("-----------------------------------------------")
+                print("")
+
+                print("FETCHING CONTENT FROM THE APPROPRIATE DATA NODE")
+                request_For_Article(article)
+
+            else:
+
+                print("AUTHENTICATION FAILED")
+                print("-----------------------------------------------")
+
 
         elif tempCheck['flag'] == "Update":
 
-            # if DS.authenticate(article, y, webServerE, webServerN) == True:
-
             article = tempCheck["Article"]
 
-            Send_Insertion_Request(article,False,content)
-            # else:
-            #
-            #     print("Authentication Failed")
+            content = tempCheck["Content"]
+
+            y = tempCheck["y"]
+
+            print("")
+            print("UPDATE REQUEST RECEIVED")
+
+            print("")
+
+            print("-----------------------------------------------")
+            print("AUTHENTICATING USING RSA SIGNATURE")
+
+            if DS.authenticate(article, y, webServerE, webServerN) == True:
+
+                print("AUTHENTICATED SUCCESSFULLY")
+                print("-----------------------------------------------")
+                print("")
+
+                print("UPDATING CONTENT AT THE APPROPRIATE DATA NODE")
+
+                Send_Insertion_Request(article,True,content)
+
+                send_Conformation_To_Web_Server(addr[0], 7007)
+
+                print("CONFORMATION SENT TO WEB SERVER")
+
+            else:
+
+                print("AUTHENTICATION FAILED")
+                print("-----------------------------------------------")
 
 
         elif tempCheck['flag'] == "List":
 
-            print("Received List Request")
+            print(" ")
+            print("REQUEST FOR LIST OF ARTICLES RECEIVED")
             send_List_To_Web_Server()
-
+            print("SENT THE LIST OF ARTICLES TO WEB SERVER")
 
 
 def receive_From_Data_Servers():
 
-    print("started receiving")
+    print("LISTENING TO DATA NODES")
 
     # IP = socket.gethostbyname(socket.gethostname())
-    IP = '129.21.156.120'
+    IP = '192.168.0.28'
 
     port = 5006
 
@@ -568,13 +640,14 @@ def receive_From_Data_Servers():
     while True:
         data, addr = receivingSock.recvfrom(1024)
 
-        print("Some data received of type " + str(type(data)))
+
 
         tempCheck = json.loads(data.decode('utf-8'))
 
-        print(tempCheck)
+
 
         if tempCheck['flag'][0] == "Register":
+
 
 
             point = tempCheck["point"][0]
@@ -583,8 +656,9 @@ def receive_From_Data_Servers():
 
             IP = tempCheck["IP"][0]
 
-            print(IP)
-            print(type(IP))
+            print(" ")
+            print("RECEIVED NEW NODE JOINING REQUEST")
+
             New_Node_Request(IP,point,port)
 
         elif tempCheck['flag'] == "Failure Notice":
@@ -595,15 +669,21 @@ def receive_From_Data_Servers():
 
             port = tempCheck[port][0]
 
+            print("")
+            print("RECEIVED NODE FAILED INFORMATION")
+
             Node_Failed_Notification(FailedNode,NotifyingNode,port)
 
 
         elif tempCheck['flag'] == "ArticleResponse":
 
+
+
             article = tempCheck['Article']
             content = tempCheck['Content']
 
-            print(" RECEIVED RESPONSE FOR ARTICLE - " + article + "FROM DATA SERVER ")
+            print("")
+            print("RECEIVED RESPONSE FROM DATA SERVER FOR : " + str(article))
 
             send_Article_Response_To_Web_Server(article,content)
 

@@ -9,29 +9,14 @@ import random
 from fractions import gcd
 
 
-################### Dictionary Declarations ##############
 
-RangeToNode = {} # Maps Ranges to Nodes
-
-NodeToRange = {} # Maps Nodes to Ranges
-
-ContentHits = {} # Maps Contents and how many tines it has been requested
-
-################### Dictionary Declarations ##############
-
-################### FLAGS ##############
-
-AnyChangeinNode = False
-
-AnyChangeinContent = False
-
-################### FLAGS ##############
 
 
 
 #################################Digital Signature Class####################################
 
 class DigitalSignature():
+
 
 
     def __init__(self,p,q):
@@ -58,7 +43,17 @@ class DigitalSignature():
             self.d+=1
 
 
+    def hash_Function(message):
+
+        code = 0
+        for letter in message:
+            code += ord(letter)
+        return code % 360
+
+
     def encrypt(self,m):
+
+        m = self.hash_Function(m)
 
         y = (m**self.d) % self.n
 
@@ -76,6 +71,63 @@ class DigitalSignature():
             return False
 
 #################################Digital Signature Class####################################
+
+
+
+
+
+
+################### Dictionary Declarations ##############
+
+RangeToNode = {} # Maps Ranges to Nodes
+
+NodeToRange = {} # Maps Nodes to Ranges
+
+ContentHits = {} # Maps Contents and how many tines it has been requested
+
+################### Dictionary Declarations ##############
+
+################### FLAGS ##############
+
+AnyChangeinNode = False
+
+AnyChangeinContent = False
+
+################### FLAGS ##############
+
+
+#####################Variables#####################
+
+ListOfPrimeNumbers = [2,3,5,7,11,13,17,19,23,29,31
+,37,41,43,47,53,59,61,67,71
+,73,79,83,89,97,101,103,107,109,113
+,127,131,137,139,149,151,157,163,167,173
+,179,181,191,193,197,199,211,223,227,229
+,233,239,241,251,257,263,269,271,277,281
+,283,293,307,311,313,317,331,337,347,349
+,353,359,367,373,379,383,389,397,401,409
+,419,421,431,433,439,443,449,457,461,463
+,467,479,487,491,499,503,509,521,523,541
+,547,557,563,569,571,577,587,593,599,601
+,607,613,617,619,631,641,643,647,653,659
+,661,673,677,683,691,701,709,719,727,733
+,739,743,751,757,761,769,773,787,797,809
+,811,821,823,827,829,839,853,857,859,863
+,877,881,883,887,907,911,919,929,937,941
+,947,953,967,971,977,983,991,997]
+
+
+p = random.choice(ListOfPrimeNumbers)
+
+q = p
+while q!=p:
+    q = random.choice(ListOfPrimeNumbers)
+
+
+DS = DigitalSignature(p,q)
+
+#####################Variables#####################
+
 
 def hash_Function(Name):
 
@@ -240,8 +292,13 @@ def request_For_Article(article):
 
     data = {}
 
+
+
     data ["flag"] = "ArticleRequest"
+
+
     data["Article"] = article
+    data["DS"] = DS.encrypt(article)
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -254,22 +311,25 @@ def request_For_Article(article):
 
 
 
-def Send_Insertion_Request (article, content):
+def Send_Insertion_Request (article,update, content):
 
     hashValue = hash_Function(article)
-
-    content = json.loads(content.decode("utf-8"))
-
-    content['hash'] = hashValue
-
-    content = json.dumps(content)
 
     node = return_Node_For_Value(hashValue)
 
     data = {}
-    data["flag"] = "ArticleInsert"
+
+    if update == True:
+
+        data["flag"] = "Update"
+    else:
+        data["flag"] = "Insert"
+
     data["Article"] = article
     data['Content'] = content
+    data['Hash'] = hashValue
+    data['DS'] = DS.encrypt(article)
+
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -357,13 +417,20 @@ def receive_From_Web_Server():
             content = tempCheck["Content"]
             article = tempCheck["Article"]
             ContentHits[article] = 0
+            Send_Insertion_Request(article,False,content)
 
 
         elif tempCheck['flag'] == "Read":
 
             article = tempCheck["Article"]
 
-        # elif tempCheck['flag'] == "Update":
+            request_For_Article(article)
+
+        elif tempCheck['flag'] == "Update":
+
+            article = tempCheck["Article"]
+
+            Send_Insertion_Request(article,False,content)
 
         elif tempCheck['flag'] == "List":
 
@@ -419,7 +486,7 @@ def receive_From_Data_Servers():
 def main():
 
 
-    # receive_From_Data_Servers()
+    _thread.start_new_thread(receive_From_Data_Servers,())
 
     receive_From_Web_Server()
 

@@ -12,15 +12,10 @@ window.location="/create_article/";
             style="margin-left:20px;color: #ffffff; background-color: #f69924;
             border-color:#f69924;" class="btn btn-primary"> Create Article</button>
 </div>
+
+<ul class="list-group" style="margin-top: 3%;width: 70%;margin-left: 20px;">
     {% for article in articles %}
-        <img src="{% static 'images/golisano.jpg' %}" style="height:300px; width:300px"/>
-        <br>
-        <label>Article by: {{ article.author }}</label>
-        <br>
-        <br>
-        <label>Title: {{ article.article_title}}</label>
-        <br>
-        <br>
-        {{ article.article_content }}
+        <li class="list-group-item"><a href="/article/{{ article}}/">{{ article}}</a></li>
     {% endfor %}
+</ul>
 {% endblock %}

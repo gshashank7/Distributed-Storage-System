@@ -7,5 +7,6 @@ urlpatterns = [
     url(r'^login/$', views.login, name='login'),
     url(r'^create_user/$', views.createUser, name='create_user'),
     url(r'^save_user/$', views.saveUser, name='save_user'),
-
+    url(r'^article/(?P<article_name>.+?)/$', views.getArticle, name='getArticle'),
+    url(r'^edit_article/(?P<article_name>.+?)/$', views.updateArticle, name='getArticle'),
 ]

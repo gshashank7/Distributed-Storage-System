@@ -1,0 +1,35 @@
+{{article.Article}}
+{{article.Content}}
+{% extends 'base.html' %}
+{% block main %}
+<div style="margin-left:10px; margin-bottom:20px;">
+    <label style="float:left;">{{message}}</label>
+    <label style="float: right; margin-right:50px;">Welcome {{user}}</label>
+</div>
+<br>
+<form action="/edit_article/{{article.Article}}/" method="post" style="margin-top:20px;">
+    {% csrf_token %}
+  <div class="col-md-6" style="margin-top:20px;">
+      <div class="panel panel-info">
+        <div class="panel-body">
+         <form class="form-inline" role="form">
+            <div class="form-group">
+                <label class="" for="articletitle">Article Title</label>
+                <input name="article_title" type="text" class="form-control"
+                       id= "articletitle" name="articletitle" placeholder="Article Title"
+                        value="{{article.Article}}">
+            </div>
+            <div class="form-group">
+                <label class="" for="article_content">Article Content</label>
+                <textarea name="article_content" placeholder="Article Content"
+                          class="form-control" rows="4" id="article_content"
+                          style="line-height: 50px;"> {{article.Content}}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary"
+            style="color: #ffffff; background-color: #f69924; border-color:#f69924;">Update Article</button>
+         </form>
+        </div>
+      </div>
+    </div>
+</form>
+{% endblock %}

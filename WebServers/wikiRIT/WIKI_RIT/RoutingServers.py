@@ -6,15 +6,74 @@ import socket
 import json
 import _thread
 import random
+from fractions import gcd
 
 
-class node:
 
-    def __init__(self,IP,startPoint,endPoint):
 
-        self.IP = IP
-        self.startPoint = startPoint
-        self.endPoint = endPoint
+
+
+#################################Digital Signature Class####################################
+
+class DigitalSignature():
+
+
+
+    def __init__(self,p,q):
+
+        self.p = p
+        self.q = q
+
+        self.n = self.p* self.q
+        self.phiOfn = (self.p-1) * (self.q-1)
+        self.efound = False
+
+        while self.efound != True:
+
+            self.e = random.randint(0, self.phiOfn)
+
+            if gcd(self.e, self.phiOfn) == 1:
+                self.efound = True
+
+
+        self.d = 0
+
+        while (self.e*self.d) % self.phiOfn != 1:
+
+            self.d+=1
+
+
+    def hash_Function(message):
+
+        code = 0
+        for letter in message:
+            code += ord(letter)
+        return code % 360
+
+
+    def encrypt(self,m):
+
+        m = self.hash_Function(m)
+
+        y = (m**self.d) % self.n
+
+        return y
+
+    def authenticate(self,m,y,e,n):
+
+        z = (y**e) % n
+
+        if z == m:
+
+            return True
+        else:
+
+            return False
+
+#################################Digital Signature Class####################################
+
+
+
 
 
 
@@ -35,6 +94,39 @@ AnyChangeinNode = False
 AnyChangeinContent = False
 
 ################### FLAGS ##############
+
+
+#####################Variables#####################
+
+ListOfPrimeNumbers = [2,3,5,7,11,13,17,19,23,29,31
+,37,41,43,47,53,59,61,67,71
+,73,79,83,89,97,101,103,107,109,113
+,127,131,137,139,149,151,157,163,167,173
+,179,181,191,193,197,199,211,223,227,229
+,233,239,241,251,257,263,269,271,277,281
+,283,293,307,311,313,317,331,337,347,349
+,353,359,367,373,379,383,389,397,401,409
+,419,421,431,433,439,443,449,457,461,463
+,467,479,487,491,499,503,509,521,523,541
+,547,557,563,569,571,577,587,593,599,601
+,607,613,617,619,631,641,643,647,653,659
+,661,673,677,683,691,701,709,719,727,733
+,739,743,751,757,761,769,773,787,797,809
+,811,821,823,827,829,839,853,857,859,863
+,877,881,883,887,907,911,919,929,937,941
+,947,953,967,971,977,983,991,997]
+
+
+p = random.choice(ListOfPrimeNumbers)
+
+q = p
+while q!=p:
+    q = random.choice(ListOfPrimeNumbers)
+
+
+DS = DigitalSignature(p,q)
+
+#####################Variables#####################
 
 
 def hash_Function(Name):
@@ -181,6 +273,7 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
 
 def request_For_Article(article):
 
+
     hashValue = hash_Function(article)
 
     node1 = return_Node_For_Value(hashValue)
@@ -199,8 +292,13 @@ def request_For_Article(article):
 
     data = {}
 
+
+
     data ["flag"] = "ArticleRequest"
-    data["article"] = article
+
+
+    data["Article"] = article
+    data["DS"] = DS.encrypt(article)
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -211,15 +309,27 @@ def request_For_Article(article):
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
 
-def Send_Insertion_Request (article):
+
+
+def Send_Insertion_Request (article,update, content):
 
     hashValue = hash_Function(article)
 
     node = return_Node_For_Value(hashValue)
 
     data = {}
-    data["flag"] = "ArticleInsert"
-    data["article"] = article
+
+    if update == True:
+
+        data["flag"] = "Update"
+    else:
+        data["flag"] = "Insert"
+
+    data["Article"] = article
+    data['Content'] = content
+    data['Hash'] = hashValue
+    data['DS'] = DS.encrypt(article)
+
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -233,57 +343,103 @@ def Send_Insertion_Request (article):
     ContentHits [article] = 0
 
 
-def receive_From_Routing_Server():
-    IP = socket.gethostname()
-    port = 5005
-
-    receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    receivingSock.bind((IP, port))
-
-    while True:
-
-        data, addr = receivingSock.recvfrom(1024)
-
-        tempCheck = json.loads(data.decode('utf-8'))
-
-        if tempCheck['flag'] == "syncNode":
-
-           RangeToNode= tempCheck["RangeToNode"]
-
-           NodeToRange = tempCheck["NodeToRange"]
-
-        elif tempCheck['flag'] == "Content":
-
-            ContentHits = tempCheck["ContentHits"]
 
 
-# def request_Article_From_Data_node(article):
 
+
+# def receive_From_Routing_Server():
+#
+#     IP = socket.gethostname()
+#     port = 5005
+#
+#     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     receivingSock.bind((IP, port))
+#
+#     while True:
+#
+#         data, addr = receivingSock.recvfrom(1024)
+#
+#         tempCheck = json.loads(data.decode('utf-8'))
+#
+#         if tempCheck['flag'] == "syncNode":
+#
+#            RangeToNode= tempCheck["RangeToNode"]
+#
+#            NodeToRange = tempCheck["NodeToRange"]
+#
+#         elif tempCheck['flag'] == "Content":
+#
+#             ContentHits = tempCheck["ContentHits"]
+
+
+
+
+
+def send_List_To_Web_Server():
+
+
+    IP = "129.21.69.21"
+    port = 7007
+
+    data = ContentHits
+    data = json.dumps(data)
+    data = data.encode("utf-8")
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+    print("Sent the list")
 
 
 
 def receive_From_Web_Server():
 
-    IP = socket.gethostname()
-    port = 5005
+    IP = "129.21.156.120"
+    port = 5007
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receivingSock.bind((IP, port))
+
+    print("Started Receiving from web server")
 
     while True:
 
         data, addr = receivingSock.recvfrom(1024)
 
+        print("Received something")
         tempCheck = json.loads(data.decode('utf-8'))
+
+        print(tempCheck)
 
         if tempCheck['flag'] == "Insert":
 
-            data = tempCheck['Data']
+            print("Received Insertion request")
+
+            content = tempCheck["Content"]
+            article = tempCheck["Article"]
+            ContentHits[article] = 0
+            Send_Insertion_Request(article,False,content)
 
 
         elif tempCheck['flag'] == "Read":
 
             article = tempCheck["Article"]
+
+            request_For_Article(article)
+
+        elif tempCheck['flag'] == "Update":
+
+            article = tempCheck["Article"]
+
+            Send_Insertion_Request(article,False,content)
+
+        elif tempCheck['flag'] == "List":
+
+            print("Received List Request")
+            send_List_To_Web_Server()
+
+
+
+
 
 
 def receive_From_Data_Servers():
@@ -330,8 +486,9 @@ def receive_From_Data_Servers():
 def main():
 
 
-    receive_From_Data_Servers()
+    _thread.start_new_thread(receive_From_Data_Servers,())
 
+    receive_From_Web_Server()
 
 
 

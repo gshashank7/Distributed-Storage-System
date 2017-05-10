@@ -61,6 +61,8 @@ class DigitalSignature():
 
     def authenticate(self,m,y,e,n):
 
+        m = self.hash_Function(m)
+
         z = (y**e) % n
 
         if z == m:
@@ -128,6 +130,9 @@ while q!=p:
 
 DS = DigitalSignature(p,q)
 
+
+WebServerE = None
+WebServerN = None
 #####################Variables#####################
 
 
@@ -414,10 +419,29 @@ def send_List_To_Web_Server():
     print("Sent the list")
 
 
+def send_Article_Response_To_Web_Server(article,content):
+
+    data = {}
+    IP = "129.21.69.21"
+    port = 7007
+    data['Article'] = article
+    data['Content'] = content
+    data['y'] = DS.encrypt(article)
+    data = json.dumps(data)
+    data = data.encode("utf-8")
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+    print("Sent the list")
+
+
 
 def receive_From_Web_Server():
 
-    IP = socket.gethostbyname(socket.gethostname())
+    global webServerE
+    global webServerN
+
+    IP = "129.21.156.120"
     port = 5007
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -438,6 +462,8 @@ def receive_From_Web_Server():
 
         if tempCheck['flag'] == "PK":
 
+                webServerE = tempCheck['e']
+                webServerN = tempCheck['n']
                 send_My_Public_Key(IP,7007)
 
 
@@ -447,21 +473,42 @@ def receive_From_Web_Server():
 
             content = tempCheck["Content"]
             article = tempCheck["Article"]
-            ContentHits[article] = 0
-            Send_Insertion_Request(article,False,content)
 
+            y = tempCheck["y"]
+
+            if DS.authenticate(article,y,webServerE,webServerN) == True:
+
+                ContentHits[article] = 0
+
+                Send_Insertion_Request(article,False,content)
+
+            else:
+
+                print("Authentication Failed")
 
         elif tempCheck['flag'] == "Read":
 
             article = tempCheck["Article"]
 
-            request_For_Article(article)
+            if DS.authenticate(article, y, webServerE, webServerN) == True:
+
+                request_For_Article(article)
+
+            else:
+
+                print("Authentication Failed")
 
         elif tempCheck['flag'] == "Update":
 
-            article = tempCheck["Article"]
+            if DS.authenticate(article, y, webServerE, webServerN) == True:
 
-            Send_Insertion_Request(article,False,content)
+                article = tempCheck["Article"]
+
+                Send_Insertion_Request(article,False,content)
+            else:
+
+                print("Authentication Failed")
+
 
         elif tempCheck['flag'] == "List":
 
@@ -470,17 +517,16 @@ def receive_From_Web_Server():
 
 
 
-
-
-
-
-
 def receive_From_Data_Servers():
 
     print("started receiving")
 
-    IP = socket.gethostbyname(socket.gethostname())
+    # IP = socket.gethostbyname(socket.gethostname())
+    IP = '129.21.156.120'
+
     port = 5006
+
+
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receivingSock.bind((IP, port))
@@ -497,12 +543,16 @@ def receive_From_Data_Servers():
         print(tempCheck)
 
         if tempCheck['flag'][0] == "Register":
+
+
             point = tempCheck["point"][0]
 
             port = int(tempCheck["port"][0])
 
             IP = tempCheck["IP"][0]
 
+            print(IP)
+            print(type(IP))
             New_Node_Request(IP,point,port)
 
         elif tempCheck['flag'] == "Failure Notice":
@@ -514,6 +564,15 @@ def receive_From_Data_Servers():
             port = tempCheck[port][0]
 
             Node_Failed_Notification(FailedNode,NotifyingNode,port)
+
+
+        elif tempCheck['flag'] == "ArticleResponse":
+
+            article = tempCheck['Article']
+            content = tempCheck['Content']
+
+            send_Article_Response_To_Web_Server(article,content)
+
 
 
 

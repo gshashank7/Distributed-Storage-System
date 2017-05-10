@@ -1,3 +1,5 @@
+import random
+
 from django.shortcuts import render
 from django.template import RequestContext
 from models import article
@@ -7,15 +9,106 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 import json
 import socket
+from fractions import gcd
 
-servers = {}
+#################################Digital Signature Class####################################
+class DigitalSignature():
+
+
+
+    def __init__(self,p,q):
+
+        self.p = p
+        self.q = q
+
+        self.n = self.p* self.q
+        self.phiOfn = (self.p-1) * (self.q-1)
+        self.efound = False
+
+        while self.efound != True:
+
+            self.e = random.randint(0, self.phiOfn)
+
+            if gcd(self.e, self.phiOfn) == 1:
+                self.efound = True
+
+
+        self.d = 0
+
+        while (self.e*self.d) % self.phiOfn != 1:
+
+            self.d+=1
+
+
+    def hash_Function(self,message):
+
+        code = 0
+        for letter in message:
+            code += ord(letter)
+        return code % 360
+
+
+    def encrypt(self,m):
+
+        m = self.hash_Function(m)
+
+        y = (m**self.d) % self.n
+
+        return y
+
+    def authenticate(self,m,y,e,n):
+
+        m = self.hash_Function(m)
+
+        z = (y**e) % n
+
+        if z == m:
+
+            return True
+        else:
+
+            return False
+
+#################################Digital Signature Class####################################
+
+ListOfPrimeNumbers = [2,3,5,7,11,13,17,19,23,29,31
+,37,41,43,47,53,59,61,67,71
+,73,79,83,89,97,101,103,107,109,113
+,127,131,137,139,149,151,157,163,167,173
+,179,181,191,193,197,199,211,223,227,229
+,233,239,241,251,257,263,269,271,277,281
+,283,293,307,311,313,317,331,337,347,349
+,353,359,367,373,379,383,389,397,401,409
+,419,421,431,433,439,443,449,457,461,463
+,467,479,487,491,499,503,509,521,523,541
+,547,557,563,569,571,577,587,593,599,601
+,607,613,617,619,631,641,643,647,653,659
+,661,673,677,683,691,701,709,719,727,733
+,739,743,751,757,761,769,773,787,797,809
+,811,821,823,827,829,839,853,857,859,863
+,877,881,883,887,907,911,919,929,937,941
+,947,953,967,971,977,983,991,997]
+
+
+p = random.choice(ListOfPrimeNumbers)
+
+q = p
+while q!=p:
+    q = random.choice(ListOfPrimeNumbers)
+
+
+DS = DigitalSignature(p,q)
 
 def article_list(request):
     print 'article list started'
     articles = sendData('List')
     return render(request, 'article_list.html', {'articles': articles.keys()}, context_instance=RequestContext(request))
 
+reqSent = 0
+publicKeys = {'e': 0, 'n': 0}
+
 def login(request):
+    global reqSent
     if request.method == "POST":
         username = request.POST.get('username');
         password = request.POST.get('password');
@@ -24,6 +117,9 @@ def login(request):
         user = authenticate(username=username)
         if user is not None:
             auth_login(request, user)
+            if(reqSent == 0):
+                reqSent = 1
+                sendKeys()
             print 'redirecting to article list'
             return redirect('article_list')
         else:
@@ -78,10 +174,16 @@ def getArticle(request, article_name):
 def sendData(flag, article=None, content = None):
     # send data to python server for content manager
     print 'send data for ' + flag
+    if flag != 'List':
+        print article
+        y = DS.encrypt(article)
+
     data = {}
     data["flag"] = flag
     data["Article"] = article
     data['Content'] = content
+    if flag != 'List':
+        data['y'] = y
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -103,15 +205,26 @@ def sendData(flag, article=None, content = None):
     print 'received data'
     print data
     map = json.loads(data.decode('utf-8'))
-    return map
+    if (flag != 'List'):
+        auth = DS.authenticate(map['Article'], map['y'], publicKeys['e'], publicKeys['n'])
+        if(auth==True):
+            return map
+        else:
+            print 'Authentication failed for article ' + map['Article']
+    else:
+        return map
 
 def sendCreate(flag, article, content = None):
     # send data to python server for content management
     print 'send data for ' + flag
+    print article
+    y = DS.encrypt(str(article))
+    print 'Encryption done'
     data = {}
     data["flag"] = flag
     data["Article"] = article
     data['Content'] = content
+    data['y'] = y
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -121,3 +234,30 @@ def sendCreate(flag, article, content = None):
 
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
+
+def sendKeys():
+    data = {}
+    data['flag'] = 'PK'
+    data['e'] = DS.e
+    data['n'] = DS.n
+    data = json.dumps(data)
+    data = data.encode("utf-8")
+
+    IP = '129.21.156.120'
+    port = 5007
+    sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendingSock.sendto(data, (IP, port))
+
+    selfIP = "129.21.69.21"
+    portForReceive = 7007
+
+    receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receivingSock.bind((selfIP, portForReceive))
+    print 'receiving'
+    data, addr = receivingSock.recvfrom(1024)
+    print 'received data'
+    print data
+    map = json.loads(data.decode('utf-8'))
+    publicKeys['e'] = map['e']
+    publicKeys['n'] = map['n']
+    return map

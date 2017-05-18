@@ -9,7 +9,10 @@ import com.sun.scenario.animation.shared.InterpolationInterval;
 import jdk.nashorn.internal.parser.JSONParser;
 import org.json.*;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.*;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -22,7 +25,7 @@ class demo extends Thread {
     static DatagramSocket dataSendingSocket;
     static DatagramSocket dataReceivingSocket;
     static boolean heartBeatResponseReceived = false;
-    static DBINterface dbiNterface = new DBINterface();
+    static DBINterface dbInterface;
     static int startRange;
     static int endRange;
     static int oldNeighborStartRange;
@@ -32,25 +35,41 @@ class demo extends Thread {
     static int dataSendingPort = 11000;
     static int dataReceivingPort = 10005;
     static int heartBeatPort = 20000;
+    static DatagramSocket sendSock;
     static boolean registered = false;
     static String leftNeighbor, rightNeighbor, oldNeighborStart;
+    //InetAddress.getLocalHost().toString()  129.21.85.74
+    // 129.21.37.42 domino
+    //129.21.37.28 yes
+    //static String IPP = "129.21.85.74";//local
+    //static String IPP = "129.21.37.42";//domino
+     //static String IPP = "129.21.37.28"; //yes
+    static String IPP = "129.21.37.70"; //midas
+
 
     public demo() throws UnknownHostException {
         systemMap = new HashMap<>();
-        systemMap.put(1,InetAddress.getByName("129.21.159.104"));
+        systemMap.put(1,InetAddress.getByName("129.21.156.120"));
     }
 
     public static void main(String[] args) throws SocketException, UnknownHostException {
+        dbInterface = new DBINterface();
         reqSendingSocket = new DatagramSocket(reqSendingPort);
         reqReceivingSocket = new DatagramSocket(reqReceivingPort);
         dataSendingSocket = new DatagramSocket(dataSendingPort);
         dataReceivingSocket = new DatagramSocket(dataReceivingPort);
+        sendSock = new DatagramSocket(heartBeatPort);
+        dbInterface.connect();
+
         System.out.println("Hello world");
         demo d1 = new demo();
         d1.threadID = 1;// receive from server
         demo d2 = new demo();
-        d2.threadID = 2;
+        d2.threadID = 2;    // receive from data servers
+        demo d3 = new demo(); // heartbeats
+        d3.threadID = 3;
         d2.start();
+        d3.start();
 
         d1.start();
 
@@ -65,6 +84,10 @@ class demo extends Thread {
                 Random random = new Random();
                 obj.append("flag", "Register");
                 obj.append("port", 9000);
+                //InetAddress.getLocalHost().toString()  129.21.85.74
+                // 129.21.37.42 domino
+                //129.21.37.28 yes
+                obj.append("IP", IPP);
                 obj.append("point", random.nextInt(360));
                 byte[] sendBuffer = obj.toString().getBytes();
                 System.out.println("Request sending to: " + systemMap.get(i) + " at port: " + reqSendingPort);
@@ -115,22 +138,32 @@ class demo extends Thread {
         try {
             System.out.println("Inside run for receive");
             receiveFromReqServers();
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        }  catch (IOException | SQLException e ) {
             e.printStackTrace();
         }
+
     }
     else if(threadID == 2)  {
         try {
             receive();
-        } catch (IOException e) {
+    } catch (IOException |SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    else if(threadID == 3)  {
+        try {
+            sendHeartBeat();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
     }
 
-    void receiveFromReqServers() throws IOException   {
+    void receiveFromReqServers() throws IOException, SQLException {
         if(!registered)  {
             registerAsDataNode();
         }
@@ -138,41 +171,95 @@ class demo extends Thread {
             byte[] receiveBuffer = new byte[2048];
             DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
             reqReceivingSocket.receive(receivePacket);
-            JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
-            System.out.println("Flag: " + recData.getString("flag"));
+            String data = new String(receivePacket.getData(), "UTF-8");
+            JSONObject recData = new JSONObject(data);
+            String flag = recData.get("flag").toString();
+            System.out.println("Flag received from server: " + recData.getString("flag"));
 
-            if(recData.getString("flag").equals("Failure Reply"))    {
+            if(flag.equals("FailureReply"))    {
                 // new neighbor received
-                rightNeighbor = recData.getString("New Neighbor");
-                endRange = recData.getInt("End Point");
+                rightNeighbor = recData.getString("NewNeighbor");
+                endRange = recData.getInt("EndPoint");
+                reqDataFromRight();
 
+            }
+            else if (flag.equals("Insert")) {
+                // inserting an article
+                dbInterface.insertArticle(recData);
+                recData.put("flag", "replicateArticle");
+                byte[] sendBuffer = recData.toString().getBytes();
+                DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor), dataReceivingPort);
+                // sending request for replication
+                try {
+                    dataSendingSocket.send(sendPacket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Inserted an article");
 
+            }
+            else if(flag.equals("Update"))  {
+                // update an article
+                dbInterface.updateArticle(recData);
+                System.out.println("Updated the entry");
+
+                recData.put("flag", "updateReplicatedArticle");
+                byte[] sendBuffer = recData.toString().getBytes();
+                DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor), dataReceivingPort);
+                // sending request for replication
+                try {
+                    dataSendingSocket.send(sendPacket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+            else if(flag.equals("Read"))    {
+                // read an article
+                JSONObject obj = dbInterface.readArticle(recData.get("Article").toString());
+                    byte[] sendBuffer = obj.toString().getBytes();
+                DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(1), reqSendingPort);
+                // sending join request
+                try {
+                    reqSendingSocket.send(sendPacket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Send read request data back to the server: " + systemMap.get(1));
             }
 
 
         }
     }
 
-    void receive() throws IOException {
+    void receive() throws IOException, SQLException {
         while (true)    {
             byte[] receiveBuffer = new byte[32768];
+            System.out.println("Inside receive ");
             DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
             try {
                 dataReceivingSocket.receive(receivePacket);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            JSONObject recData = new JSONObject(receivePacket.getData().toString().trim());
-            System.out.println("Flag: " + recData.getString("flag"));
-            // copy
-            if(recData.getString("flag").equals("copy"))    {
-                //            // copy request received
-                int startRange1 = recData.getInt("Start_Index");
-                int endRange1 = recData.getInt("End_Index");
-                int port = recData.getInt("port");
+            String data = new String(receivePacket.getData(), "UTF-8");
+            JSONObject recData = new JSONObject(data);
 
+            String flag = recData.get("flag").toString().substring(2, recData.get("flag").toString().length() - 2);
+            System.out.println("Received flag: " + flag + " from  a data server " + receivePacket.getAddress());
+            // copy
+            if(flag.equalsIgnoreCase("copy"))    {
+                //            // copy request received
+                int startRange1 = Integer.parseInt(recData.get("Start_Index").toString().substring(2, recData.get("Start_Index").toString().length() - 2));
+                int endRange1 = Integer.parseInt(recData.get("End_Index").toString().substring(2, recData.get("End_Index").toString().length() - 2));
+                int port = Integer.parseInt(recData.get("port").toString().substring(2, recData.get("port").toString().length() - 2));
+                System.out.println("startRange1: " + startRange1);
+                System.out.println("endRange1: " + endRange1);
                 // sending original data
-                JSONObject sendObj = dbiNterface.getOriginalDataWithRange(new int[] {startRange1, endRange1});
+                rightNeighbor = receivePacket.getAddress().toString();
+                rightNeighbor = rightNeighbor.substring(1, rightNeighbor.length() );
+                System.out.println(rightNeighbor);
+                JSONObject sendObj = dbInterface.getOriginalDataWithRange(new int[] {startRange1, endRange1});
 
                 // data to be sent
                 sendObj.append("flag", "copy_response");
@@ -185,15 +272,19 @@ class demo extends Thread {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
-                dbiNterface.deleteOriginalData(new int[] {startRange1, endRange1});
+                System.out.println("Sending copy data");
+                dbInterface.deleteOriginalData(new int[] {startRange1, endRange1});
 
                 // sending data for replication
 
-                sendObj = dbiNterface.getData("original");
+                sendObj = dbInterface.getData("original");
+                JSONObject obj2 = new JSONObject();
+                obj2.put("replicationData", sendObj.getJSONArray("originalData"));
+                obj2.append("flag", "replicate_data");
+                obj2.append("port", 9000);
+                System.out.println("sending data for replication to the new right node");
                 // data to be sent
-                sendObj.append("flag", "replicate_data");
-                sendBuffer = sendObj.toString().getBytes();
+                sendBuffer = obj2.toString().getBytes();
                 sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , dataReceivingPort);
 
                 try {
@@ -203,92 +294,126 @@ class demo extends Thread {
                 }
 
             }
-            else if(recData.getString("flag").equals("copy_response"))  {
-                dbiNterface.writeData("original", recData );
+            else if(flag.equals("copy_response"))  {
+                dbInterface.writeData("original", recData );
                 // call replication function
                 replicateData();
 
             }
-            else if(recData.getString("flag").equals("replicate_data"))   {
-                dbiNterface.deleteReplicationData();
-                dbiNterface.writeData("replication", recData);
+            else if(flag.equals("replicate_data"))   {
+                dbInterface.deleteReplicationData();
+                System.out.println("Received data for Replication: " + recData);
+                dbInterface.writeData("replication", recData);
             }
-            else if(recData.getString("flag").equals("HeartBeat"))  {
+            else if(flag.equals("artBe"))  {
                 // send heartbeat response
+
                 JSONObject obj = new JSONObject();
                 obj.put("flag", "HeartBeat OK");
                 byte[] sendBuffer = obj.toString().getBytes();
                 DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , dataReceivingPort);
                 dataSendingSocket.send(sendPacket);
+                System.out.println("Heartbeat response sent to : " + receivePacket.getAddress().toString());
             }
-            else if(recData.getString("flag").equals("HeartBeat OK"))   {
+            else if(flag.equals("artBeat "))   {
+                System.out.println("Heartbeat response received");
                 heartBeatResponseReceived = true;
             }
 
-            else if(recData.getString("flag").equals("Get Replication Data"))   {
+            else if(flag.equals("t Replication Da"))   {
                 // get replicated data and send
-                JSONObject sendObj = dbiNterface.getData("replication");
-                sendObj.put("flag", "Replicated Data");
-                byte[] sendBuffer = sendObj.toString().getBytes();
+                System.out.println("Sending the replication data to the new left neighbor");
+                leftNeighbor = receivePacket.getAddress().toString();
+                leftNeighbor = leftNeighbor.substring(1, leftNeighbor.length());
+                JSONObject sendObj = dbInterface.getData("replication");
+                JSONObject obj2 = new JSONObject();
+                obj2.put("originalData", sendObj.getJSONArray("replicationData"));
+                obj2.put("flag", "Replicated Data");
+                obj2.append("port", 9000);
+                //sendObj.put("flag", "Replicated Data");
+                byte[] sendBuffer = obj2.toString().getBytes();
                 DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , dataReceivingPort);
                 dataSendingSocket.send(sendPacket);
             }
 
-            else if(recData.getString("flag").equals("Replicated Data"))    {
-                dbiNterface.writeData("original", recData);
+            else if(flag.equals("plicated Da"))    {
+                // replication data
+                System.out.println("Replication data received from the new right neighbor: " + recData);
+                dbInterface.writeData("original", recData);
 
-                JSONObject sendObj = dbiNterface.getData("original");
+                JSONObject sendObj = dbInterface.getData("original");
                 sendObj.put("flag", "New Replication Data");
                 byte[] sendBuffer = sendObj.toString().getBytes();
                 DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, receivePacket.getAddress() , dataReceivingPort);
                 dataSendingSocket.send(sendPacket);
 
             }
-            else if(recData.getString("flag").equals("New Replication Data"))   {
-                dbiNterface.deleteReplicationData();
-                dbiNterface.writeData("replication", recData);
+            else if(flag.equals("New Replication Data"))   {
+                dbInterface.deleteReplicationData();
+                dbInterface.writeData("replication", recData);
+            }
+            else if(flag.equalsIgnoreCase("plicateArtic"))  {
+                // replicating article
+                dbInterface.insertArticleInReplication(recData);
+            }
+            else if(flag.equalsIgnoreCase("dateReplicatedArtic"))   {
+                dbInterface.updateArticleInReplication(recData);
             }
 
         }
     }
 
     private void sendHeartBeat() throws UnknownHostException, SocketException, InterruptedException {
-        DatagramSocket sendSock = new DatagramSocket(heartBeatPort);
-        JSONObject obj = new JSONObject();
-        obj.put("flag", "HeartBeat");
-        byte[] sendBuffer = obj.toString().getBytes();
-        DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor) , dataReceivingPort);
-        try {
-            sendSock.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        // sleeping
-        Thread.sleep(5000);
-        if(!heartBeatResponseReceived)  {
-            // right neighbor failed
-             obj = new JSONObject();
-             obj.put("flag", "FailureNotice");
-             obj.put("FailedNode", rightNeighbor);
-            rightNeighbor = null;
-        sendBuffer = obj.toString().getBytes();
-             sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(1) , reqSendingPort);
+        while (true) {
+            Thread.sleep(2000);
+            if(rightNeighbor!= null && !rightNeighbor.equalsIgnoreCase("empty"))
+            {
+                heartBeatResponseReceived = false;
+            System.out.println("sending heartbeat");
+
+            JSONObject obj = new JSONObject();
+            obj.put("flag", "HeartBeat");
+            byte[] sendBuffer = obj.toString().getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor), dataReceivingPort);
             try {
-                reqSendingSocket.send(sendPacket);
+                sendSock.send(sendPacket);
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            // sleeping
+            Thread.sleep(5000);
+            if (!heartBeatResponseReceived) {
+                // right neighbor failed
+                obj = new JSONObject();
+                obj.put("flag", "FailureNotice");
+                System.out.println("Right failed node: " + rightNeighbor);
+                obj.append("FailedNode", rightNeighbor);
+                obj.append("IP", IPP);
+                obj.append("port", 9000);
+                rightNeighbor = null;
+                sendBuffer = obj.toString().getBytes();
+                sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, systemMap.get(1), reqSendingPort);
+                try {
+                    reqSendingSocket.send(sendPacket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
+            }
         }
-
+        else
+                System.out.println(rightNeighbor);
+    }
     }
 
     private void replicateData() throws UnknownHostException {
 
-        JSONObject obj = dbiNterface.getData("original");
-        obj.append("flag", "replicate_data");
-        obj.append("port", 9000);
-        byte[] sendBuffer = obj.toString().getBytes();
+        JSONObject obj = dbInterface.getData("original");
+        JSONObject obj2 = new JSONObject();
+        obj2.put("replicationData", obj.getJSONArray("originalData"));
+        obj2.append("flag", "replicate_data");
+        obj2.append("port", 9000);
+        byte[] sendBuffer = obj2.toString().getBytes();
         DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor), dataReceivingPort);
         // sending request for replication
         try {
@@ -310,11 +435,18 @@ class demo extends Thread {
         // send a packet for self data request
         JSONObject obj = new JSONObject();
         obj.append("flag", "Copy");
-        obj.append("Start_Index", startRange);
-        obj.append("End_Index", endRange);
+        obj.append("Start_Index", String.valueOf(startRange));
+        obj.append("End_Index", String.valueOf(endRange));
         obj.append("port", "10005");
+        System.out.println("Inside copy data");
 
-        byte[] sendBuffer = obj.toString().getBytes();
+        byte[] sendBuffer = new byte[0];
+        try {
+            System.out.println(obj.toString());
+            sendBuffer = obj.toString().getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
         DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(leftNeighbor) , dataReceivingPort);
         try {
             dataSendingSocket.send(sendPacket);
@@ -323,9 +455,25 @@ class demo extends Thread {
         }
     }
 
-    void reqDataFromRight() {
+    void reqDataFromRight() throws UnknownHostException {
         JSONObject obj = new JSONObject();
-        obj.append("flag", "");
+        obj.put("flag", "Get Replication Data");
+        byte[] sendBuffer = new byte[0];
+        try {
+            System.out.println(obj.toString());
+            sendBuffer = obj.toString().getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, InetAddress.getByName(rightNeighbor) , dataReceivingPort);
+        try {
+            dataSendingSocket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        replicateData();
+
+
     }
 
 

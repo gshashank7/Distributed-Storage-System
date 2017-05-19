@@ -4,19 +4,20 @@
 
 package DataServers.Dataservers.src;
 
-import com.google.gson.Gson;
-import com.sun.scenario.animation.shared.InterpolationInterval;
-import jdk.nashorn.internal.parser.JSONParser;
 import org.json.*;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.*;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
-class demo extends Thread {
+/**
+ * This class is used to create a data store. It represents a single data node in our database. It incorporates
+ * failure handling, fault tolerance and replication by replicating data to the right neighbor and sending it periodic
+ * heartbeats to check its status.
+ */
+class DataStore extends Thread {
 
     int threadID;
     HashMap<Integer, InetAddress> systemMap;
@@ -46,12 +47,23 @@ class demo extends Thread {
      //static String IPP = "129.21.37.28"; //yes
     static String IPP = "129.21.37.70"; //midas
 
-
-    public demo() throws UnknownHostException {
+    /**
+     * Constructor function is used to initialize the hashmap that contains the list of all the entry point servers.
+     * @throws UnknownHostException
+     */
+    public DataStore() throws UnknownHostException {
         systemMap = new HashMap<>();
         systemMap.put(1,InetAddress.getByName("129.21.156.120"));
     }
 
+    /**
+     *
+     * main function creates three threads to receive the data from entry point server and other data servers. It uses
+     * the third thread to send periodic heartbeats to the data server on its right.
+     * @param args          Command line arguments
+     * @throws SocketException
+     * @throws UnknownHostException
+     */
     public static void main(String[] args) throws SocketException, UnknownHostException {
         dbInterface = new DBINterface();
         reqSendingSocket = new DatagramSocket(reqSendingPort);
@@ -62,11 +74,11 @@ class demo extends Thread {
         dbInterface.connect();
 
         System.out.println("Hello world");
-        demo d1 = new demo();
+        DataStore d1 = new DataStore();
         d1.threadID = 1;// receive from server
-        demo d2 = new demo();
+        DataStore d2 = new DataStore();
         d2.threadID = 2;    // receive from data servers
-        demo d3 = new demo(); // heartbeats
+        DataStore d3 = new DataStore(); // heartbeats
         d3.threadID = 3;
         d2.start();
         d3.start();
@@ -75,6 +87,11 @@ class demo extends Thread {
 
     }
 
+    /**
+     * This function is used to register the node as one of the data nodes. After the execution of this function, the
+     * data node gets its address space and information about its left and right neighbor.
+     * @throws UnknownHostException
+     */
     private void registerAsDataNode() throws UnknownHostException {
         boolean successfullyRegistered = false;
         System.out.println("Inside register as data node");
@@ -132,7 +149,10 @@ class demo extends Thread {
         registered = true;
     }
 
-
+    /**
+     * run function handles the thread functions. It directs the threads to their respective functions
+     * depending on their thread IDs.
+     */
     public void run()   {
     if(threadID == 1)   {
         try {
@@ -163,6 +183,11 @@ class demo extends Thread {
     }
     }
 
+    /**
+     * this function handles all the request received from the entry point servers.
+     * @throws IOException
+     * @throws SQLException
+     */
     void receiveFromReqServers() throws IOException, SQLException {
         if(!registered)  {
             registerAsDataNode();
@@ -232,6 +257,11 @@ class demo extends Thread {
         }
     }
 
+    /**
+     * This function handles all the request received from the data servers.
+     * @throws IOException
+     * @throws SQLException
+     */
     void receive() throws IOException, SQLException {
         while (true)    {
             byte[] receiveBuffer = new byte[32768];
@@ -363,6 +393,15 @@ class demo extends Thread {
         }
     }
 
+    /**
+     * this function is used to incorporate heartbeats functionality. In that, it sends periodic heartbeats to its
+     * right neighbor and waits for a response. If it does not receives a response within certain time, it informs the
+     * entry point server about the node failure and then communicates with the new right neighbor to get the failed node's
+     * data.
+     * @throws UnknownHostException
+     * @throws SocketException
+     * @throws InterruptedException
+     */
     private void sendHeartBeat() throws UnknownHostException, SocketException, InterruptedException {
         while (true) {
             Thread.sleep(2000);
@@ -406,6 +445,10 @@ class demo extends Thread {
     }
     }
 
+    /**
+     * this function is used to replicate the node's data on the right node.
+     * @throws UnknownHostException
+     */
     private void replicateData() throws UnknownHostException {
 
         JSONObject obj = dbInterface.getData("original");
@@ -455,6 +498,10 @@ class demo extends Thread {
         }
     }
 
+    /**
+     * this function is used to request the data from the right node.
+     * @throws UnknownHostException
+     */
     void reqDataFromRight() throws UnknownHostException {
         JSONObject obj = new JSONObject();
         obj.put("flag", "Get Replication Data");

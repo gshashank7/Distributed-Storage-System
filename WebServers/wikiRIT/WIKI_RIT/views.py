@@ -10,7 +10,7 @@ from django.shortcuts import redirect
 import json
 import socket
 from fractions import gcd
-
+import time
 #################################Digital Signature Class####################################
 class DigitalSignature():
 
@@ -89,11 +89,11 @@ ListOfPrimeNumbers = [2,3,5,7,11,13,17,19,23,29,31
 ,877,881,883,887,907,911,919,929,937,941
 ,947,953,967,971,977,983,991,997]
 
-
+sendingIP = '129.21.156.120'
 p = random.choice(ListOfPrimeNumbers)
 
 q = p
-while q!=p:
+while q==p:
     q = random.choice(ListOfPrimeNumbers)
 
 
@@ -145,6 +145,7 @@ def updateArticle(request, article_name):
         if user is not None:
             article_title = request.POST.get('article_title')
             article_content = request.POST.get('article_content')
+            print article_content
             sendCreate('Update', article_title, article_content)
             return redirect('article_list')
         else:
@@ -187,13 +188,14 @@ def sendData(flag, article=None, content = None):
 
     data = json.dumps(data)
     data = data.encode("utf-8")
-
-    IP = '129.21.156.120'
+    ##129.21.22.196
+    IP = sendingIP
     port = 5007
 
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
     print 'data sent'
+    print data
     # receive the data from content manager
     selfIP = "129.21.69.21"
     portForReceive = 7007
@@ -201,12 +203,18 @@ def sendData(flag, article=None, content = None):
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receivingSock.bind((selfIP, portForReceive))
 
-    data, addr = receivingSock.recvfrom(1024)
+    datar, addr = receivingSock.recvfrom(1024)
     print 'received data'
-    print data
-    map = json.loads(data.decode('utf-8'))
+    map = json.loads(datar.decode('utf-8'))
+    print map
     if (flag != 'List'):
+        print publicKeys['e']
+        print publicKeys['n']
+        print '#'*50
+        print 'Public Keys \n'
+        print str(publicKeys['e']) + ', ' + str(publicKeys['n'])
         auth = DS.authenticate(map['Article'], map['y'], publicKeys['e'], publicKeys['n'])
+        print '#' * 50
         if(auth==True):
             return map
         else:
@@ -218,7 +226,7 @@ def sendCreate(flag, article, content = None):
     # send data to python server for content management
     print 'send data for ' + flag
     print article
-    y = DS.encrypt(str(article))
+    y = DS.encrypt(article)
     print 'Encryption done'
     data = {}
     data["flag"] = flag
@@ -228,12 +236,21 @@ def sendCreate(flag, article, content = None):
 
     data = json.dumps(data)
     data = data.encode("utf-8")
-
-    IP = '129.21.156.120'
+    print data
+    IP = sendingIP
     port = 5007
 
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
+    selfIP = "129.21.69.21"
+    portForReceive = 7007
+
+    receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receivingSock.bind((selfIP, portForReceive))
+
+    data, addr = receivingSock.recvfrom(1024)
+    print data
+    print 'received data'
 
 def sendKeys():
     data = {}
@@ -243,7 +260,11 @@ def sendKeys():
     data = json.dumps(data)
     data = data.encode("utf-8")
 
-    IP = '129.21.156.120'
+    print '#'*50
+    print 'Sending public keys'
+    print str(DS.e) + ', ' + str(DS.n)
+
+    IP = sendingIP
     port = 5007
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
@@ -260,4 +281,7 @@ def sendKeys():
     map = json.loads(data.decode('utf-8'))
     publicKeys['e'] = map['e']
     publicKeys['n'] = map['n']
+    print 'Public keys received'
+    print str(publicKeys['e']) + ', ' + str(publicKeys['n'])
+    print '#' * 50
     return map

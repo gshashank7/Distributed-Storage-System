@@ -9,8 +9,8 @@ public class HashFunction {
         System.out.println(getHash("B. Thomas Golisano College of Computing and Information Sciences"));
         System.out.println(getHash("CTRL ALT DELi RIT"));
         System.out.println(getHash("Shobhit"));
-        System.out.println(getHash("Nikhilesh"));
-        System.out.println(getHash("Shashank"));
+        System.out.println(getHash("Nikhilesh111"));
+        System.out.println(getHash("Shashank11111"));
     }
     static int getHash(String data) {
         int hash = 0;

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load staticfiles %}
+{% block main %}
+<script type="text/javascript">
+function createArticle() {
+window.location="/create_article/";
+}
+</script>
+<div>
+    <label style="float: right; margin-right:50px; font-size:20px;">Welcome {{user}}</label>
+    <button type="button" onclick="createArticle()"
+            style="margin-left:20px;color: #ffffff; background-color: #f69924;
+            border-color:#f69924;" class="btn btn-primary"> Create Article</button>
+</div>
+
+<ul class="list-group" style="margin-top: 3%;width: 70%;margin-left: 20px;">
+    {% for article in articles %}
+        <li class="list-group-item"><a href="/article/{{ article}}/">{{ article}}</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}

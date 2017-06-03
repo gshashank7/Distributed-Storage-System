@@ -7,7 +7,7 @@ import json
 import _thread
 import random
 from fractions import gcd
-
+import time
 
 
 
@@ -16,8 +16,9 @@ from fractions import gcd
 #################################Digital Signature Class####################################
 
 class DigitalSignature():
-
-
+    '''
+    This class has the functions to generate private keys and authenticate.
+    '''
 
     def __init__(self,p,q):
 
@@ -42,14 +43,12 @@ class DigitalSignature():
 
             self.d+=1
 
-
     def hash_Function(self,message):
 
         code = 0
         for letter in message:
             code += ord(letter)
         return code % 360
-
 
     def encrypt(self,m):
 
@@ -65,15 +64,11 @@ class DigitalSignature():
 
         print("SIGNATURE SENT WITH THE MESSAGE : " + str(y))
 
-
-
         m = self.hash_Function(m)
 
         print("HASH OF MESSAGE : " + str(m))
 
         print("DECRYPTING THE SIGNATURE USING PUBLIC KEYS")
-
-
 
         z = (y**e) % n
 
@@ -158,7 +153,10 @@ WebServerN = None
 
 
 def hash_Function(Name):
-
+    '''
+    This function takes the ASCII value of each character of the article name and mods with with 360
+     and returns the hash value of that article
+    '''
     code = 0
     for letter in Name:
         code += ord(letter)
@@ -167,7 +165,12 @@ def hash_Function(Name):
 
 
 def return_Node_For_Value(value):
+    '''
+    :param value: the hash value
+    :return:  Node
 
+    This function will return the node which owns the address space where the hash value lies
+    '''
 
     if RangeToNode:
         for key in RangeToNode.keys():
@@ -177,6 +180,16 @@ def return_Node_For_Value(value):
 
 
 def New_Node_Request(Node,Point,port):
+
+#   :param Node:  The IP address of the new node that is joining
+#   :param Point: The point at which the node wants to join
+#   :param port:  Port of the newly joining node
+#   :return:  None
+
+#  This function is called when a new node wants to join the system, This function will divide the address space and
+#  send the information to the node that is currently owning that address space.
+
+
 
    print("ADDING NEW NODE")
    print("NODE IS : " + str(Node))
@@ -207,6 +220,7 @@ def New_Node_Request(Node,Point,port):
 
        print("SENDING THIS INFORMATION TO THE NODE ")
 
+       time.sleep(0.4)
        data = json.dumps(data)
        data = data.encode('utf-8')
        IP = Node
@@ -260,6 +274,16 @@ def New_Node_Request(Node,Point,port):
 
 
 def Node_Failed_Notification(FailedNode, NotifyingNode, port):
+    '''
+
+    :param FailedNode:  The node that has failed
+    :param NotifyingNode:  The node that is notifying this information
+    :param port: the port through the notifying node is communicating
+    :return: None
+
+    This function is called when any node notifies that a node has failed.
+
+    '''
 
     print("FAILED NODE : "+ str(FailedNode))
 
@@ -272,25 +296,26 @@ def Node_Failed_Notification(FailedNode, NotifyingNode, port):
     FailedNodeRange = NodeToRange[FailedNode]
     NotifyingNodeRange = NodeToRange[NotifyingNode]
 
-    del RangeToNode[FailedNode]
-    del NodeToRange[FailedNodeRange]
-    del RangeToNode[NotifyingNode]
-    del NodeToRange[NotifyingNodeRange]
+    del RangeToNode[FailedNodeRange]
+    del NodeToRange[FailedNode]
+    del RangeToNode[NotifyingNodeRange]
+    del NodeToRange[NotifyingNode]
 
     RangeToNode[(NotifyingNodeRange[0],FailedNodeRange[1])] = NotifyingNode
     NodeToRange[NotifyingNode] = (NotifyingNodeRange[0],FailedNodeRange[1])
 
-    NewNeighbour,Range = return_Node_For_Value(FailedNodeRange[1])
+    NewNeighbour,Range = return_Node_For_Value(FailedNodeRange[1]+1)
 
     print("NEW RANGE OF " + str(NotifyingNode) + " : " + str(NodeToRange[NotifyingNode]))
+    print("NEW NEIGHBOR IS : " +str(NewNeighbour))
 
     print("SENDING THIS INFORMATION TO : " + str(NotifyingNode))
 
     data = {}
-    data['flag'] = "Failure Reply"
-    data["New Neighbour"] = NewNeighbour
-    data["Starting Point"] = NotifyingNodeRange[0]
-    data["End Point"] = FailedNodeRange[1]
+    data['flag'] = "FailureReply"
+    data["NewNeighbor"] = NewNeighbour
+    data["StartingPoint"] = NotifyingNodeRange[0]
+    data["EndPoint"] = FailedNodeRange[1]
 
     data = json.dumps(data)
     data = data.encode("utf-8")
@@ -345,7 +370,13 @@ def request_For_Article(article):
 
 def Send_Insertion_Request (article,update, content):
 
+    '''
 
+    :param article: Name of the article
+    :param update: If it is an update or a new article
+    :param content: The content of the new article
+    :return: conformation that the article has been inserted successfully
+    '''
 
     hashValue = hash_Function(article)
 
@@ -366,14 +397,14 @@ def Send_Insertion_Request (article,update, content):
 
 
     data = json.dumps(data)
-    print("")
-    print(data)
+    # print("")
+    # print(data)
     data = data.encode("utf-8")
 
     IP = node[0]
     port = 9000
-    print("")
-    print(data)
+    # print("")
+    # print(data)
 
     sendingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sendingSock.sendto(data, (IP, port))
@@ -414,6 +445,12 @@ def Send_Insertion_Request (article,update, content):
 
 
 def send_My_Public_Key(IP,port):
+    '''
+    This is the function that is called as soon as the code is started to exchange the public keys
+    :param IP: The IP address of the node that the public key is should be sent to
+    :param port: the port to which the information needs to be sent
+    :return: Node
+    '''
 
     print("SENDING MY PUBLIC KEYS TO WEB SERVER")
 
@@ -438,7 +475,10 @@ def send_My_Public_Key(IP,port):
 
 
 def send_List_To_Web_Server():
-
+    '''
+    This function just forwards the list of articles that is present in the data servers to the web server
+    :return:  None
+    '''
 
     IP = "129.21.69.21"
     port = 7007
@@ -450,7 +490,12 @@ def send_List_To_Web_Server():
     sendingSock.sendto(data, (IP, port))
 
 def send_Article_Response_To_Web_Server(article,content):
-
+    '''
+    This function forwards the received article to the web server
+    :param article: Name of the article that the web server requested
+    :param content: the content of the article requested by he web server in JSON format
+    :return: None
+    '''
 
     print("FORWARDING THIS INFORMATION TO WEB SERVER")
     data = {}
@@ -468,7 +513,12 @@ def send_Article_Response_To_Web_Server(article,content):
 
 
 def send_Conformation_To_Web_Server(IP,port):
+    '''
 
+    :param IP: The IP address of the web server
+    :param port: the port to which the confirmation needs to be sent to
+    :return: None
+    '''
     data = {}
 
     data['flag'] = "Inserted"
@@ -481,11 +531,15 @@ def send_Conformation_To_Web_Server(IP,port):
 
 
 def receive_From_Web_Server():
+    '''
+    This function continuously listens to the web server and receives the data from it and responds to any request it wants
+    :return: None
+    '''
 
     global webServerE
     global webServerN
 
-    IP = "192.168.0.28"
+    IP = "129.21.156.120"
     port = 5007
 
     receivingSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -622,11 +676,15 @@ def receive_From_Web_Server():
 
 
 def receive_From_Data_Servers():
+    '''
+    This function continuously listens to the data severs and responds to all the requests by data servers
+    :return: None
+    '''
 
     print("LISTENING TO DATA NODES")
 
     # IP = socket.gethostbyname(socket.gethostname())
-    IP = '192.168.0.28'
+    IP = '129.21.156.120'
 
     port = 5006
 
@@ -656,18 +714,24 @@ def receive_From_Data_Servers():
 
             IP = tempCheck["IP"][0]
 
+
             print(" ")
             print("RECEIVED NEW NODE JOINING REQUEST")
 
             New_Node_Request(IP,point,port)
 
-        elif tempCheck['flag'] == "Failure Notice":
+        elif tempCheck['flag'] == "FailureNotice":
 
-            FailedNode = tempCheck['Failed Node'][0]
+            FailedNode = tempCheck['FailedNode'][0]
+
+
+            print(FailedNode)
 
             NotifyingNode = tempCheck["IP"][0]
 
-            port = tempCheck[port][0]
+            print(NotifyingNode)
+
+            port = tempCheck["port"][0]
 
             print("")
             print("RECEIVED NODE FAILED INFORMATION")
@@ -694,9 +758,12 @@ def receive_From_Data_Servers():
 
 
 def main():
+    '''
+    This is where the program starts by starting two threads for receiving form the data server and the web serves respectively
+    :return:
+    '''
 
-
-    _thread.start_new_thread(receive_From_Data_Servers,())
+    _thread.start_new_thread(receive_From_Data_Servers,()) #
 
     receive_From_Web_Server()
 
